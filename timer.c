@@ -9,7 +9,6 @@ bool TimeIntervalPassed(Timer *t) {
     return false;
 }
 
-void CheckTimer(Timer t) {
-    if (TimeIntervalPassed(&t))
-        t.callback();
+void CheckTimer(Timer *t) {
+    if (TimeIntervalPassed(t)) { t->callback(); }
 }

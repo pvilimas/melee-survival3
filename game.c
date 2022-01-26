@@ -6,6 +6,7 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
+    - timer callbacks 
     - fix collision checking (CheckCollisionRecs not < 3.0f)
         - alternatively an entity size (or width and height)
     - impl player.hp, player invincibility timer, enemy HP and bullet damage
@@ -19,8 +20,6 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
     
     - make sure DestroyGame works
 */
-
-
 
 // used to tile the background
 const char *BG_IMG_PATH = "./assets/background/bg_hextiles.png";
@@ -56,13 +55,13 @@ Game game = {
     .state = GS_TITLE,
     .ui = {
         .start_btn = (Button){
-            42.5, 45, 15, 10, "Start", StartBtnCallback,
+            38, 55, 24, 10, "Start", StartBtnCallback,
         },
     },
     .timers = {
-        .enemy_spawn = NewTimer(0.5),
-        .player_invinc = NewTimer(0.5),
-        .player_fire_bullet = NewTimer(1.0),
+        .enemy_spawn = NewTimer(0.5, EnemySpawnTimerCallback),
+        .player_invinc = NewTimer(0.5, PlayerInvincTimerCallback),
+        .player_fire_bullet = NewTimer(1.0, PlayerBulletTimerCallback),
     },
     .camera = (Camera2D){
         .target = (Vector2){ 0, 0 },
@@ -229,8 +228,9 @@ void UpdateCam(void) {
 /* gamestate draw functions */
 
 void DrawTitle(void) {
-    ClearBackground(RAYWHITE);
-    DrawText("title screen", 100, 100, 20, RED);
+    ClearBackground((Color){170, 170, 170, 255});
+    // TODO: make this scale with screen size, make it % based like the buttons
+    DrawTextC("Melee Survival", GetScreenWidth()/2, GetScreenHeight()/2 - 100, 50, BLACK);
     DrawButton(game.ui.start_btn);
 }
 
@@ -240,18 +240,8 @@ void DrawGameplay(void) {
     
     HandleInput();
 
-    if (TimeIntervalPassed(&game.timers.enemy_spawn)) {
-        vec_push(&game.entities[E_ENEMY_BASIC], RandSpawnEnemy());
-    }
-
-    if (TimeIntervalPassed(&game.timers.player_fire_bullet)) {
-        Entity p = PlayerFireBullet();
-
-        // if no enemies to fire at, don't fire
-        if (p.type != E_NONE) {
-            vec_push(&game.entities[E_PLAYER_BULLET], p);
-        }
-    }
+    CheckTimer(&game.timers.enemy_spawn);
+    CheckTimer(&game.timers.player_fire_bullet);
 
     TileBackground();
     DrawPlayer();
@@ -628,4 +618,21 @@ void StartBtnCallback(void) {
 
 void DoNothingCallback(void) {
     printf(":)\n");
+}
+
+void EnemySpawnTimerCallback(void) {
+    vec_push(&game.entities[E_ENEMY_BASIC], RandSpawnEnemy());
+}
+
+void PlayerInvincTimerCallback(void) {
+
+}
+
+void PlayerBulletTimerCallback(void) {
+    Entity p = PlayerFireBullet();
+
+    // if no enemies to fire at, don't fire
+    if (p.type != E_NONE) {
+        vec_push(&game.entities[E_PLAYER_BULLET], p);
+    }
 }

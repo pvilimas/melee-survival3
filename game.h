@@ -162,4 +162,8 @@ Entity *player_closest_entity(EntityType);
 void StartBtnCallback(void);
 void DoNothingCallback(void);
 
+void EnemySpawnTimerCallback(void);
+void PlayerInvincTimerCallback(void);
+void PlayerBulletTimerCallback(void);
+
 #endif

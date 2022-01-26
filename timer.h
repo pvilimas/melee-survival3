@@ -11,15 +11,15 @@ typedef struct {
   TimerCallback callback;
 } Timer;
 
-#define NewTimer(_interval) \
-  (Timer){                  \
-    .interval = _interval,  \
-    .last_recorded = 0,     \
-  }
+#define NewTimer(_interval, _callback)  \
+  (Timer){                              \
+    .interval = _interval,              \
+    .last_recorded = 0,                 \
+    .callback = _callback               \
+  }                                     \
 
 // returns true if an interval has passed, then resets the interval
 bool TimeIntervalPassed(Timer *t);
-void CheckTimer(Timer t);
-
+void CheckTimer(Timer *t);
 
 #endif 
