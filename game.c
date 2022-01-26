@@ -570,11 +570,11 @@ float distance(Vector2 a, Vector2 b) {
 }
 
 bool is_collision(Entity a, Entity b) {
+    return entity_distance(a, b) < 3.0f;
     return distance(
         (Vector2){EntityHitbox(a).x, EntityHitbox(a).y},
         (Vector2){EntityHitbox(b).x, EntityHitbox(b).y}
     ) < 3.0f;
-//    return entity_distance(a, b) < 3.0f;
 //    return CheckCollisionRecs(EntityHitbox(a), EntityHitbox(b));
 }
 
