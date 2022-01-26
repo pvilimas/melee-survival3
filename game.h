@@ -34,6 +34,7 @@ typedef enum {
 typedef struct {
     EntityType type;
     float x, y;
+    float size;
     float speed, angle;
     bool invincible;
 } Entity;
@@ -49,17 +50,19 @@ typedef vec_t(Entity) EntityVec;
 
 typedef struct {
     // in seconds
-    double spawn_interval;
+    float spawn_interval;
     // % border around the screen (1.20 = 120%), used if it spawns randomly
-    double spawn_margin;
+    float spawn_margin;
     // what it spawns
     EntityType subspawn_type;
     // how often, in seconds
-    double subspawn_interval;
+    float subspawn_interval;
     // just for the player (sec)
-    double invincibility_time;
+    float invincibility_time;
     // speed in pixels per frame
-    double speed;
+    float speed;
+    // draw size
+    float size;
     int max_hp;
     int contact_damage;
 } EntityAttrs;
@@ -70,10 +73,10 @@ typedef struct {
         Vector2 window_init_dim;
         bool window_initialized;
         int target_fps;
-        /* in % of the screen size */
-        float randspawn_margin;
-        EntityAttrs playerdata;
-        EntityAttrs entitydata[E_COUNT];
+        /* in % of the screen size, anything outside of here is considered offscreen. enemies spawn here. */
+        float screen_margin;
+        /* +2 for player */
+        EntityAttrs entitydata[E_COUNT+2];
     } config;
 
     struct {

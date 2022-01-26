@@ -28,19 +28,19 @@ Game game = {
         .window_initialized = false,
         .window_init_dim = (Vector2) { 800, 500 },
         .target_fps = 60,
-        .randspawn_margin = 1.20f,
-        .playerdata = {
-            .subspawn_type = E_PLAYER_BULLET,
-            .subspawn_interval = 1.0,
-            .speed = 3.0,
-            .max_hp = 100,
-            .invincibility_time = 0.5
-        },
+        .screen_margin = 1.20f,
         .entitydata = {
+            [E_PLAYER] = {
+                .subspawn_type = E_PLAYER_BULLET,
+                .subspawn_interval = 1.0,
+                .max_hp = 100,
+                .invincibility_time = 0.5
+            },
             [E_ENEMY_BASIC] = {
                 .spawn_interval = 0.5,
                 .spawn_margin = 1.5,
                 .speed = 1.0,
+                .size = 6,
                 .max_hp = 100,
                 .contact_damage = 10,
             },
@@ -69,7 +69,8 @@ Game game = {
     .player = (Entity){
         .x = 400,
         .y = 250,
-        .speed = 3.0f,
+        .speed = 3.0,
+        .size = 8,
         .invincible = false,
     },
 };
@@ -285,6 +286,7 @@ void DrawGameover(void) {
 
 /* draw functions */
 
+/* please don't mess with this please */
 void TileBackground(void) {
     for (int i = ((game.player.x - GetScreenWidth()/2) / game.textures.background.width) - 1; i < ((game.player.x + GetScreenWidth()/2) / game.textures.background.width) + 1; i++) {
         for (int j = ((game.player.y - GetScreenHeight()/2) / game.textures.background.height) - 1; j < ((game.player.y + GetScreenHeight()/2) / game.textures.background.height) + 1; j++) {
@@ -299,24 +301,24 @@ void TileBackground(void) {
 }
 
 void DrawPlayer(void) {
-    DrawCircle(game.player.x, game.player.y, 8, BLACK);
-    DrawCircle(game.player.x, game.player.y, 6, (Color){60, 60, 60, 255});
+    DrawCircle(game.player.x, game.player.y, game.player.size, BLACK);
+    DrawCircle(game.player.x, game.player.y, game.player.size * 3/4, (Color){60, 60, 60, 255});
 }
 
 void DrawEnemy(Entity *enemy) {
-    DrawCircle(enemy->x, enemy->y, 6, MAROON);
-    DrawCircle(enemy->x, enemy->y, 4, RED);
+    DrawCircle(enemy->x, enemy->y, enemy->size, MAROON);
+    DrawCircle(enemy->x, enemy->y, enemy->size * 2/3, RED);
 }
 
 void DrawBullet(Entity *bullet) {
     DrawLineEx(
-        (Vector2){bullet->x - 4 * cos(bullet->angle), bullet->y - 4 * sin(bullet->angle)},
-        (Vector2){bullet->x + 4 * cos(bullet->angle), bullet->y + 4 * sin(bullet->angle)},
+        (Vector2){bullet->x - bullet->size * cos(bullet->angle), bullet->y - bullet->size * sin(bullet->angle)},
+        (Vector2){bullet->x + bullet->size * cos(bullet->angle), bullet->y + bullet->size * sin(bullet->angle)},
         4.0f, DARKGRAY
     );
     DrawLineEx(
-        (Vector2){bullet->x - 3 * cos(bullet->angle), bullet->y - 3 * sin(bullet->angle)},
-        (Vector2){bullet->x + 3 * cos(bullet->angle), bullet->y + 3 * sin(bullet->angle)},
+        (Vector2){bullet->x - bullet->size * 3/4 * cos(bullet->angle), bullet->y - bullet->size * 3/4 * sin(bullet->angle)},
+        (Vector2){bullet->x + bullet->size * 3/4 * cos(bullet->angle), bullet->y + bullet->size * 3/4 * sin(bullet->angle)},
         2.0f, BLACK
     );
 }
@@ -468,28 +470,30 @@ void ManageEntities(bool draw, bool update) {
 
 Entity RandSpawnEnemy(void) {
     float x, y;
-    x = randrange(game.player.x - (game.config.randspawn_margin * GetScreenWidth()/2), game.player.x + (game.config.randspawn_margin * GetScreenWidth()/2));
+    x = randrange(game.player.x - (game.config.screen_margin * GetScreenWidth()/2), game.player.x + (game.config.screen_margin * GetScreenWidth()/2));
     
     if (game.player.x - GetScreenWidth()/2 <= x && x <= game.player.x + GetScreenWidth()/2) {
         
         // if x position is on the screen, y pos should be offscreen
         y = cointoss(
-            randrange(game.player.y - (game.config.randspawn_margin * GetScreenHeight()/2), game.player.y - (GetScreenHeight()/2)),
-            randrange(game.player.y + (GetScreenHeight()/2), game.player.y + (game.config.randspawn_margin * GetScreenHeight()/2))
+            randrange(game.player.y - (game.config.screen_margin * GetScreenHeight()/2), game.player.y - (GetScreenHeight()/2)),
+            randrange(game.player.y + (GetScreenHeight()/2), game.player.y + (game.config.screen_margin * GetScreenHeight()/2))
         );
 
     } else {
 
         // otherwise, y can be anywhere
-        y = randrange(game.player.y - (game.config.randspawn_margin * GetScreenHeight()/2), game.player.y + (game.config.randspawn_margin * GetScreenHeight()/2));
+        y = randrange(game.player.y - (game.config.screen_margin * GetScreenHeight()/2), game.player.y + (game.config.screen_margin * GetScreenHeight()/2));
     }
 
     // printf("spawning at (%f, %f)\n", x, y);
 
     return (Entity){
-        E_ENEMY_BASIC,
-        x, y,
-        game.config.entitydata[E_ENEMY_BASIC].speed,
+        .type = E_ENEMY_BASIC,
+        .x = x,
+        .y = y,
+        .size = game.config.entitydata[E_ENEMY_BASIC].size,
+        .speed = game.config.entitydata[E_ENEMY_BASIC].speed,
     };
 }
 
@@ -507,6 +511,7 @@ Entity PlayerFireBullet(void) {
         .type = E_PLAYER_BULLET,
         .x = game.player.x,
         .y = game.player.y,
+        .size = game.config.entitydata[E_ENEMY_BASIC].size,
         .speed = game.config.entitydata[E_PLAYER_BULLET].speed,
         .angle = entity_angle(game.player, *p)
     };
@@ -574,10 +579,12 @@ bool is_collision(Entity a, Entity b) {
 }
 
 bool entity_offscreen(Entity e) {
-    return e.x < game.player.x - (GetScreenWidth()/2)
-        || e.x > game.player.x + (GetScreenWidth()/2)
-        || e.y < game.player.y - (GetScreenHeight()/2)
-        || e.y > game.player.y + (GetScreenHeight()/2);
+    float w = GetScreenWidth()/2;
+    float h = GetScreenHeight()/2;
+    return e.x < game.player.x - (w)
+        || e.x > game.player.x + (w)
+        || e.y < game.player.y - (h)
+        || e.y > game.player.y + (h);
 }
 
 float entity_distance(Entity a, Entity b) {
