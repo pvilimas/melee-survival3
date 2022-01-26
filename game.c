@@ -16,6 +16,8 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
     - add 3 more types of enemies and spawn all of them randomly
     - then make it scale over time
     - then add a game timer
+    
+    - make sure DestroyGame works
 */
 
 
