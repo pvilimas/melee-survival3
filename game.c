@@ -6,9 +6,7 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - impl:
-        - enemy HP
-        - bullet damage
+    - getattr for cleaner shit (game.config.entitydata[E_PLAYER_BULLET].contact_damage => getattr(E_PLAYER_BULLET, contact_damage) )
     - make it go to the loss screen when player hp drops to 0
     - fix UI text shaking
     - impl the restart button (HARD) (maybe)
@@ -19,6 +17,9 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
     - then add a game timer
     
     - make sure DestroyGame works
+
+    - timed sprite that changes over time as a function of the time it's been on screen, then gets removed at the end
+        - like incineration flames from magic survival
 */
 
 // used to tile the background
@@ -249,12 +250,12 @@ void DrawGameplay(void) {
         game.player.invincible = false;
     }
 
-    //CheckTimer(&game.timers.player_fire_bullet);
+    CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.enemy_spawn);
 
     TileBackground();
     HandleInput();
-    DrawPlayer();
+    DrawPlayer(true);
     UpdateCam();
     DrawGameUI();
 
@@ -271,7 +272,7 @@ void DrawPaused(void) {
 
     TileBackground();
     HandleInput();
-    DrawPlayer();
+    DrawPlayer(false);
     UpdateCam();
     DrawGameUI();
 
@@ -313,9 +314,9 @@ void TileBackground(void) {
     }
 }
 
-void DrawPlayer(void) {
+void DrawPlayer(bool sprite_flickering) {
     // sprite flickering
-    if ((game.player.invincible && (int)(GetTime() * 10000) % 200 >= 100) || !game.player.invincible) {
+    if (((game.player.invincible && (int)(GetTime() * 10000) % 200 >= 100) || !game.player.invincible) || !sprite_flickering) {
         DrawCircle(game.player.x, game.player.y, game.player.size, BLACK);
         DrawCircle(game.player.x, game.player.y, game.player.size * 3/4, (Color){60, 60, 60, 255});
     }
@@ -373,12 +374,15 @@ void CollideBullets(void) {
         for (int j = 0; j < bullets->length; i++) {
             bullet = bullets->data[j];
             if (is_collision(enemy, bullet)) {
+                enemy.hp -= bullet.contact_damage;
+                if (enemy.hp <= 0) {
+                    // remove enemy
+                    vec_remove(enemies, i);
+                    i--;
+                }
                 
-                // remove enemy
-                vec_remove(enemies, i);
-                i--;
 
-                // and remove bullet
+                // remove bullet
                 vec_remove(bullets, j);
                 j--;
 
@@ -419,7 +423,7 @@ void ManageEntities(bool draw, bool update) {
     }
 
     EntityVec *entlist, *targetlist;
-    Entity *e, target;
+    Entity *e, *target;
 
     // for each type of entity
     for (int etype = 0; etype < E_COUNT; etype++) {
@@ -434,7 +438,6 @@ void ManageEntities(bool draw, bool update) {
             switch (etype) {
                 
                 /* draw bullets first, then the enemies they hit */
-
                 case E_PLAYER_BULLET: {
                     e = &entlist->data[i];
                     if (entity_offscreen(*e)) {
@@ -449,16 +452,21 @@ void ManageEntities(bool draw, bool update) {
                             // check for any collisions
                             targetlist = &game.entities[E_ENEMY_BASIC];
                             for (int j = 0; j < targetlist->length; j++) {
-                                target = targetlist->data[j];
-                                if (is_collision(*e, target)) {
+                                target = &targetlist->data[j];
+                                if (is_collision(*e, *target)) {
+                                    printf("target hp before: %d\n", target->hp);
+                                    target->hp -= e->contact_damage;
+                                    printf("target hp after:  %d\n", target->hp);
+                                    if (target->hp <= 0) {
+                                        // remove target
+                                        vec_remove(targetlist, j);
+                                        j--;
+                                    }
                                     
-                                    // remove projectile
+                                    // remove bullet
                                     vec_remove(entlist, i);
                                     i--;
 
-                                    // and remove target
-                                    vec_remove(targetlist, j);
-                                    j--;
                                     continue;
                                 }
                             }
@@ -478,13 +486,13 @@ void ManageEntities(bool draw, bool update) {
                         // if two enemies have the "same" xy pos, remove one
                         targetlist = &game.entities[E_ENEMY_BASIC];
                         for (int j = 0; j < targetlist->length; j++) {
-                            target = targetlist->data[j];
+                            target = &targetlist->data[j];
                             
                             if (i == j)
                                 continue;
 
                             /* optimization - enemy merging - keep it like this */
-                            if (entity_distance(*e, target) < 0.5) {
+                            if (entity_distance(*e, *target) < 0.5) {
                                 // remove other
                                 vec_remove(targetlist, j);
                                 j--;
@@ -542,6 +550,7 @@ Entity RandSpawnEnemy(void) {
     };
 }
 
+/* Fires at direction of closest enemy and keeps going in that direction (not homing bullets) */
 Entity PlayerFireBullet(void) {
     Entity *p = player_closest_entity(E_ENEMY_BASIC);
     if (p == NULL) {
@@ -558,7 +567,8 @@ Entity PlayerFireBullet(void) {
         .y = game.player.y,
         .size = game.config.entitydata[E_ENEMY_BASIC].size,
         .speed = game.config.entitydata[E_PLAYER_BULLET].speed,
-        .angle = entity_angle(game.player, *p)
+        .angle = entity_angle(game.player, *p),
+        .contact_damage = game.config.entitydata[E_PLAYER_BULLET].contact_damage
     };
 }
 

@@ -125,7 +125,7 @@ void DrawGameover(void);
 
 void TileBackground(void);
 
-void DrawPlayer(void);
+void DrawPlayer(bool sprite_flickering);
 void DamagePlayer(int amount);
 
 void DrawEnemy(Entity*);
