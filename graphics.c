@@ -33,7 +33,7 @@ void DrawButton(Button b) {
     
     DrawRectangleRoundedLines((Rectangle){ x, y, w, h }, 0.2f, 10, 2.0f, DARKGRAY);
     DrawRectangleRounded((Rectangle) { x, y, w, h }, 0.2f, 10, fill);
-    DrawTextC(b.label, x + w/2, y + h/2, h/2, BLACK);
+    DrawTextUI(b.label, b.x+b.w/2, b.y+b.h/2, h/2, BLACK);
     
     if (MouseInside(b) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         b.on_click();
@@ -42,10 +42,17 @@ void DrawButton(Button b) {
 
 
 /* centered */
-void DrawTextC(const char *text, float x, float y, int fontSize, Color color) {
+void DrawTextUI(const char *text, float x_percent, float y_percent, int fontSize, Color color) {
+    
+    Vector2 offset = GraphicsGetScreenOffset();
+    Vector2 size = GraphicsGetScreenSize();
+
+    float x = offset.x + (x_percent / 100 * size.x);
+    float y = offset.y + (y_percent / 100 * size.y);
     float w = MeasureText(text, fontSize);
     float h = fontSize; // right?
-    DrawText(text, x - w/2, y - h/2, fontSize, color);
+
+    DrawText(text, x-w/2, y-h/2, fontSize, color);
 }
 
 bool MouseInside(Button b) {

@@ -1,8 +1,8 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
-#include <math.h>       /* pow, sqrt */ 
-#include <stdio.h>      /* fprintf */
+#include <math.h>       /* atan2, pow, sqrt */ 
+#include <stdio.h>      /* fprintf, sprintf */
 #include <stdbool.h>    /* bool */
 #include <unistd.h>     /* sleep */ 
 
@@ -36,6 +36,7 @@ typedef struct {
     float x, y;
     float size;
     float speed, angle;
+    int max_hp, hp, contact_damage;
     bool invincible;
 } Entity;
 
@@ -68,6 +69,10 @@ typedef struct {
 } EntityAttrs;
 
 typedef struct {
+    Timer enemy_spawn, player_invinc, player_fire_bullet;
+} GameTimers;
+
+typedef struct {
     
     struct {
         Vector2 window_init_dim;
@@ -83,9 +88,7 @@ typedef struct {
         Texture2D background;
     } textures;
     
-    struct {
-        Timer enemy_spawn, player_invinc, player_fire_bullet;
-    } timers;
+    GameTimers timers;
 
     struct {
         Button start_btn, test_btn;
@@ -105,7 +108,7 @@ void InitGame(void);
 void RunGame(void);
 void DestroyGame(void);
 
-/* contains initialization logic for each state */
+// contains initialization logic for each state
 void SetState(GameState s);
 
 void HandleInput(void);
@@ -123,6 +126,7 @@ void DrawGameover(void);
 void TileBackground(void);
 
 void DrawPlayer(void);
+void DamagePlayer(int amount);
 
 void DrawEnemy(Entity*);
 void UpdateEnemy(Entity*);
@@ -130,6 +134,12 @@ void UpdateEnemy(Entity*);
 void DrawBullet(Entity*);
 void UpdateBullet(Entity*);
 void CollideBullets(void);
+
+/* game ui elements */
+
+void DrawGameUI(void);
+
+void DisplayPlayerHP(void);
 
 /* entity methods */
 
@@ -163,10 +173,11 @@ Entity *player_closest_entity(EntityType);
 /* callbacks */
 
 void StartBtnCallback(void);
-void DoNothingCallback(void);
 
 void EnemySpawnTimerCallback(void);
 void PlayerInvincTimerCallback(void);
 void PlayerBulletTimerCallback(void);
 
-#endif
+void DoNothingCallback(void);
+
+#endif /* _GAME_H_ */

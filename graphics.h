@@ -10,11 +10,6 @@
 typedef Vector2 (*ScreenOffsetFunc)(void);
 typedef Vector2 (*ScreenSizeFunc)(void);
 
-typedef enum {
-    CORNER,
-    CENTER,
-} RectMode;
-
 typedef void (*BtnCallback)(void);
 
 typedef struct {
@@ -25,7 +20,7 @@ typedef struct {
     BtnCallback on_click;
 } Button;
 
-void DrawTextC(const char *text, float x, float y, int fontSize, Color color);
+void DrawTextUI(const char *text, float x_percent, float y_percent, int fontSize, Color color);
 
 /* button methods */
 

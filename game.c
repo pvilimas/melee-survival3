@@ -6,12 +6,13 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - fix collision checking (CheckCollisionRecs not < 3.0f)
-        - alternatively an entity size (or width and height)
-    - impl player.hp, player invincibility timer, enemy HP and bullet damage
-    - then add player HP meter
-    - then make it go to the loss screen when it drops to 0
-    - impl the restart button (HARD)
+    - impl:
+        - enemy HP
+        - bullet damage
+    - make it go to the loss screen when player hp drops to 0
+    - fix UI text shaking
+    - impl the restart button (HARD) (maybe)
+    - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
 
     - add 3 more types of enemies and spawn all of them randomly
     - then make it scale over time
@@ -34,7 +35,8 @@ Game game = {
                 .subspawn_type = E_PLAYER_BULLET,
                 .subspawn_interval = 1.0,
                 .max_hp = 100,
-                .invincibility_time = 0.5
+                .invincibility_time = 1.0,
+                .contact_damage = 0,
             },
             [E_ENEMY_BASIC] = {
                 .spawn_interval = 0.5,
@@ -51,27 +53,10 @@ Game game = {
             },
         },
     },
-    .state = GS_TITLE,
     .ui = {
         .start_btn = (Button){
             38, 55, 24, 10, "Start", StartBtnCallback,
         },
-    },
-    .timers = {
-        .enemy_spawn = NewTimer(0.5, EnemySpawnTimerCallback),
-        .player_invinc = NewTimer(0.5, PlayerInvincTimerCallback),
-        .player_fire_bullet = NewTimer(1.0, PlayerBulletTimerCallback),
-    },
-    .camera = (Camera2D){
-        .target = (Vector2){ 0, 0 },
-        .zoom = 1.0f
-    },
-    .player = (Entity){
-        .x = 400,
-        .y = 250,
-        .speed = 3.0,
-        .size = 8,
-        .invincible = false,
     },
 };
 
@@ -96,6 +81,27 @@ void InitGame(void) {
     Image bg_image = LoadImage(BG_IMG_PATH);
     game.textures.background = LoadTextureFromImage(bg_image);
     UnloadImage(bg_image);
+
+
+    game.state = GS_TITLE;
+    game.timers = (GameTimers){
+        .enemy_spawn = NewTimer(game.config.entitydata[E_ENEMY_BASIC].spawn_interval, EnemySpawnTimerCallback),
+        .player_invinc = NewTimer(game.config.entitydata[E_PLAYER].invincibility_time, PlayerInvincTimerCallback),
+        .player_fire_bullet = NewTimer(game.config.entitydata[E_PLAYER].subspawn_interval, PlayerBulletTimerCallback),
+    };
+    game.camera = (Camera2D){
+        .target = (Vector2){ 0, 0 },
+        .zoom = 1.0f
+    };
+    game.player = (Entity){
+        .x = screensize().x / 2,
+        .y = screensize().y / 2,
+        .speed = 3,
+        .size = 6,
+        .max_hp = game.config.entitydata[E_PLAYER].max_hp,
+        .hp = game.config.entitydata[E_PLAYER].max_hp,
+        .invincible = false,
+    };
 
 }
 
@@ -145,8 +151,9 @@ void DestroyGame(void) {
     UnloadTexture(game.textures.background);
 }
 
-void SetState(GameState s) {
-    game.state = s;
+void SetState(GameState new_state) {
+    GameState old_state = game.state;
+    game.state = new_state;
 }
 
 void HandleInput(void) {
@@ -230,7 +237,7 @@ void UpdateCam(void) {
 void DrawTitle(void) {
     ClearBackground((Color){170, 170, 170, 255});
     // TODO: make this scale with screen size, make it % based like the buttons
-    DrawTextC("Melee Survival", GetScreenWidth()/2, GetScreenHeight()/2 - 100, 50, BLACK);
+    DrawTextUI("Melee Survival", 50, 45, 50, BLACK);
     DrawButton(game.ui.start_btn);
 }
 
@@ -238,17 +245,21 @@ void DrawGameplay(void) {
 
     BeginMode2D(game.camera);
     
-    HandleInput();
+    if (TimeIntervalPassed(&game.timers.player_invinc)) {
+        game.player.invincible = false;
+    }
 
+    //CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.enemy_spawn);
-    CheckTimer(&game.timers.player_fire_bullet);
 
     TileBackground();
+    HandleInput();
     DrawPlayer();
+    UpdateCam();
+    DrawGameUI();
 
     ManageEntities(true, true);
 
-    UpdateCam();
 
     EndMode2D();
 }
@@ -257,10 +268,12 @@ void DrawPaused(void) {
 
     BeginMode2D(game.camera);
 
-    HandleInput();
 
     TileBackground();
+    HandleInput();
     DrawPlayer();
+    UpdateCam();
+    DrawGameUI();
 
     ManageEntities(true, false);
 
@@ -273,7 +286,7 @@ void DrawPaused(void) {
     float h = size.y;
 
     DrawRectangle(x, y, w, h, (Color){180, 180, 180, 180});
-    DrawTextC("PAUSED", x+w/2, y+h/2, 50, BLACK);
+    DrawTextUI("PAUSED", 50, 50, 50, BLACK);
 
     EndMode2D();
     
@@ -286,7 +299,7 @@ void DrawGameover(void) {
 
 /* draw functions */
 
-/* please don't mess with this please */
+/* please don't mess with this please :) */
 void TileBackground(void) {
     for (int i = ((game.player.x - GetScreenWidth()/2) / game.textures.background.width) - 1; i < ((game.player.x + GetScreenWidth()/2) / game.textures.background.width) + 1; i++) {
         for (int j = ((game.player.y - GetScreenHeight()/2) / game.textures.background.height) - 1; j < ((game.player.y + GetScreenHeight()/2) / game.textures.background.height) + 1; j++) {
@@ -301,8 +314,18 @@ void TileBackground(void) {
 }
 
 void DrawPlayer(void) {
-    DrawCircle(game.player.x, game.player.y, game.player.size, BLACK);
-    DrawCircle(game.player.x, game.player.y, game.player.size * 3/4, (Color){60, 60, 60, 255});
+    // sprite flickering
+    if ((game.player.invincible && (int)(GetTime() * 10000) % 200 >= 100) || !game.player.invincible) {
+        DrawCircle(game.player.x, game.player.y, game.player.size, BLACK);
+        DrawCircle(game.player.x, game.player.y, game.player.size * 3/4, (Color){60, 60, 60, 255});
+    }
+}
+
+void DamagePlayer(int amount) {
+    if (!game.player.invincible) {
+        game.player.hp -= amount;
+        game.player.invincible = true;
+    }
 }
 
 void DrawEnemy(Entity *enemy) {
@@ -332,6 +355,7 @@ void UpdateBullet(Entity *bullet) {
     bullet->y += bullet->speed * sin(bullet->angle);
 }
 
+/* checks all player bullets with all basic enemies to see if any collided, then remove if they did */
 void CollideBullets(void) {
 
     EntityVec *bullets, *enemies;
@@ -357,10 +381,24 @@ void CollideBullets(void) {
                 // and remove bullet
                 vec_remove(bullets, j);
                 j--;
+
+                // bullet has been deleted, so return
                 return;
             }
         } 
     }
+}
+
+/* game ui elements */
+
+void DrawGameUI(void) {
+    DisplayPlayerHP();
+}
+
+void DisplayPlayerHP(void) {
+    char hp_str[15];
+    sprintf(hp_str, "HP: %d/%d", game.player.hp, game.player.max_hp);
+    DrawTextUI(hp_str, 87, 5, 30, BLACK);
 }
 
 /* entity methods */
@@ -445,11 +483,15 @@ void ManageEntities(bool draw, bool update) {
                             if (i == j)
                                 continue;
 
+                            /* optimization - enemy merging - keep it like this */
                             if (entity_distance(*e, target) < 0.5) {
                                 // remove other
                                 vec_remove(targetlist, j);
                                 j--;
-                                continue;
+                            }
+
+                            if (is_collision(game.player, *e)) {
+                                DamagePlayer(e->contact_damage);
                             }
                         }
                         UpdateEnemy(e);
@@ -494,6 +536,9 @@ Entity RandSpawnEnemy(void) {
         .y = y,
         .size = game.config.entitydata[E_ENEMY_BASIC].size,
         .speed = game.config.entitydata[E_ENEMY_BASIC].speed,
+        .max_hp = game.config.entitydata[E_ENEMY_BASIC].max_hp,
+        .hp = game.config.entitydata[E_ENEMY_BASIC].max_hp,
+        .contact_damage = game.config.entitydata[E_ENEMY_BASIC].contact_damage,
     };
 }
 
@@ -626,16 +671,12 @@ void StartBtnCallback(void) {
     SetState(GS_GAMEPLAY);
 }
 
-void DoNothingCallback(void) {
-    printf(":)\n");
-}
-
 void EnemySpawnTimerCallback(void) {
     vec_push(&game.entities[E_ENEMY_BASIC], RandSpawnEnemy());
 }
 
 void PlayerInvincTimerCallback(void) {
-
+    game.player.invincible = false;
 }
 
 void PlayerBulletTimerCallback(void) {
@@ -645,4 +686,8 @@ void PlayerBulletTimerCallback(void) {
     if (p.type != E_NONE) {
         vec_push(&game.entities[E_PLAYER_BULLET], p);
     }
+}
+
+void DoNothingCallback(void) {
+    printf(":)\n");
 }

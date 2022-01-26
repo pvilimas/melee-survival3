@@ -16,10 +16,11 @@ typedef struct {
     .interval = _interval,              \
     .last_recorded = 0,                 \
     .callback = _callback               \
-  }                                     \
+  }                                     
 
-// returns true if an interval has passed, then resets the interval
-bool TimeIntervalPassed(Timer *t);
-void CheckTimer(Timer *t);
+
+bool TimeIntervalPassed(Timer*);
+void CheckTimer(Timer*);
+void ResetTimer(Timer*); 
 
 #endif 
