@@ -6,7 +6,6 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - timer callbacks 
     - fix collision checking (CheckCollisionRecs not < 3.0f)
         - alternatively an entity size (or width and height)
     - impl player.hp, player invincibility timer, enemy HP and bullet damage
@@ -366,9 +365,10 @@ void CollideBullets(void) {
 
 Rectangle EntityHitbox(Entity e) {
     switch (e.type) {
-        case E_ENEMY_BASIC: return (Rectangle){e.x-3, e.y-3, 6.0, 6.0};
-        case E_PLAYER: return (Rectangle){e.x-4, e.y-4, 8.0, 8.0};
-        default: return (Rectangle){};
+        case E_ENEMY_BASIC:     return (Rectangle){ e.x-3, e.y-3, 6.0, 6.0 };
+        case E_PLAYER_BULLET:   return (Rectangle){ e.x-2, e.y-2, 4.0, 4.0 };
+        case E_PLAYER:          return (Rectangle){ e.x-4, e.y-4, 8.0, 8.0 };
+        default:                return (Rectangle){ };
     }
 }
 
@@ -392,33 +392,9 @@ void ManageEntities(bool draw, bool update) {
             e = &entlist->data[i];
 
             switch (etype) {
-                case E_ENEMY_BASIC: {
-                    
-                    if (update) {
-                        // if two enemies have the "same" xy pos, remove one
-                        targetlist = &game.entities[E_ENEMY_BASIC];
-                        for (int j = 0; j < targetlist->length; j++) {
-                            target = targetlist->data[j];
-                            
-                            if (i == j)
-                                continue;
+                
+                /* draw bullets first, then the enemies they hit */
 
-                            if (entity_distance(*e, target) < 0.5) {
-                                // remove other
-                                vec_remove(targetlist, j);
-                                j--;
-                                continue;
-                            }
-                        }
-                        UpdateEnemy(e);
-                    }
-
-                    if (draw) {
-                        DrawEnemy(e);
-                    }
-
-                    break;
-                }
                 case E_PLAYER_BULLET: {
                     e = &entlist->data[i];
                     if (entity_offscreen(*e)) {
@@ -452,6 +428,33 @@ void ManageEntities(bool draw, bool update) {
                         if (draw) {
                            DrawBullet(e);
                         }
+                    }
+
+                    break;
+                }
+                case E_ENEMY_BASIC: {
+                    
+                    if (update) {
+                        // if two enemies have the "same" xy pos, remove one
+                        targetlist = &game.entities[E_ENEMY_BASIC];
+                        for (int j = 0; j < targetlist->length; j++) {
+                            target = targetlist->data[j];
+                            
+                            if (i == j)
+                                continue;
+
+                            if (entity_distance(*e, target) < 0.5) {
+                                // remove other
+                                vec_remove(targetlist, j);
+                                j--;
+                                continue;
+                            }
+                        }
+                        UpdateEnemy(e);
+                    }
+
+                    if (draw) {
+                        DrawEnemy(e);
                     }
 
                     break;
@@ -562,12 +565,12 @@ float distance(Vector2 a, Vector2 b) {
 }
 
 bool is_collision(Entity a, Entity b) {
+    return CheckCollisionRecs(EntityHitbox(a), EntityHitbox(b));
     return entity_distance(a, b) < 3.0f;
     return distance(
         (Vector2){EntityHitbox(a).x, EntityHitbox(a).y},
         (Vector2){EntityHitbox(b).x, EntityHitbox(b).y}
     ) < 3.0f;
-//    return CheckCollisionRecs(EntityHitbox(a), EntityHitbox(b));
 }
 
 bool entity_offscreen(Entity e) {
