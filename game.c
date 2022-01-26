@@ -7,7 +7,6 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - make it go to the loss screen when player hp drops to 0
     - fix UI text shaking
     - impl the restart button (HARD) (maybe)
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
@@ -123,6 +122,9 @@ void RunGame(void) {
             }
             case GS_GAMEPLAY: {
                 DrawGameplay();
+                if (game.player.hp <= 0) {
+                    SetState(GS_GAMEOVER);
+                }
                 break;
             }
             case GS_PAUSED: {
