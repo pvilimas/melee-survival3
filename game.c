@@ -3,10 +3,10 @@
 extern ScreenOffsetFunc GraphicsGetScreenOffset;
 extern ScreenSizeFunc GraphicsGetScreenSize;
 
+#define getattr(etype, attr) (game.config.entitydata[etype].attr)
 
 /*
     TODO:
-    - getattr for cleaner shit (game.config.entitydata[E_PLAYER_BULLET].contact_damage => getattr(E_PLAYER_BULLET, contact_damage) )
     - make it go to the loss screen when player hp drops to 0
     - fix UI text shaking
     - impl the restart button (HARD) (maybe)
@@ -86,9 +86,9 @@ void InitGame(void) {
 
     game.state = GS_TITLE;
     game.timers = (GameTimers){
-        .enemy_spawn = NewTimer(game.config.entitydata[E_ENEMY_BASIC].spawn_interval, EnemySpawnTimerCallback),
-        .player_invinc = NewTimer(game.config.entitydata[E_PLAYER].invincibility_time, PlayerInvincTimerCallback),
-        .player_fire_bullet = NewTimer(game.config.entitydata[E_PLAYER].subspawn_interval, PlayerBulletTimerCallback),
+        .enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
+        .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
+        .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
     };
     game.camera = (Camera2D){
         .target = (Vector2){ 0, 0 },
@@ -99,8 +99,8 @@ void InitGame(void) {
         .y = screensize().y / 2,
         .speed = 3,
         .size = 6,
-        .max_hp = game.config.entitydata[E_PLAYER].max_hp,
-        .hp = game.config.entitydata[E_PLAYER].max_hp,
+        .max_hp = getattr(E_PLAYER, max_hp),
+        .hp = getattr(E_PLAYER, max_hp),
         .invincible = false,
     };
 
@@ -454,9 +454,7 @@ void ManageEntities(bool draw, bool update) {
                             for (int j = 0; j < targetlist->length; j++) {
                                 target = &targetlist->data[j];
                                 if (is_collision(*e, *target)) {
-                                    printf("target hp before: %d\n", target->hp);
                                     target->hp -= e->contact_damage;
-                                    printf("target hp after:  %d\n", target->hp);
                                     if (target->hp <= 0) {
                                         // remove target
                                         vec_remove(targetlist, j);
@@ -542,11 +540,11 @@ Entity RandSpawnEnemy(void) {
         .type = E_ENEMY_BASIC,
         .x = x,
         .y = y,
-        .size = game.config.entitydata[E_ENEMY_BASIC].size,
-        .speed = game.config.entitydata[E_ENEMY_BASIC].speed,
-        .max_hp = game.config.entitydata[E_ENEMY_BASIC].max_hp,
-        .hp = game.config.entitydata[E_ENEMY_BASIC].max_hp,
-        .contact_damage = game.config.entitydata[E_ENEMY_BASIC].contact_damage,
+        .size = getattr(E_ENEMY_BASIC, size),
+        .speed = getattr(E_ENEMY_BASIC, speed),
+        .max_hp = getattr(E_ENEMY_BASIC, max_hp),
+        .hp = getattr(E_ENEMY_BASIC, max_hp),
+        .contact_damage = getattr(E_ENEMY_BASIC, contact_damage),
     };
 }
 
@@ -565,10 +563,10 @@ Entity PlayerFireBullet(void) {
         .type = E_PLAYER_BULLET,
         .x = game.player.x,
         .y = game.player.y,
-        .size = game.config.entitydata[E_ENEMY_BASIC].size,
-        .speed = game.config.entitydata[E_PLAYER_BULLET].speed,
+        .size = getattr(E_ENEMY_BASIC, size),
+        .speed = getattr(E_PLAYER_BULLET, speed),
         .angle = entity_angle(game.player, *p),
-        .contact_damage = game.config.entitydata[E_PLAYER_BULLET].contact_damage
+        .contact_damage = getattr(E_PLAYER_BULLET, contact_damage)
     };
 }
 
