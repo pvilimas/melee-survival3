@@ -8,7 +8,6 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - impl the restart button (HARD) (maybe)
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
 
     - add 3 more types of enemies and spawn all of them randomly
@@ -57,6 +56,9 @@ Game game = {
         .start_btn = (Button){
             38, 55, 24, 10, "Start", StartBtnCallback,
         },
+        .restart_btn = (Button){
+            38, 55, 24, 10, "Try again?", RestartBtnCallback
+        }
     },
 };
 
@@ -145,6 +147,34 @@ void RunGame(void) {
     }
 }
 
+/* for restarting */
+void ReinitGame(void) {
+
+    for (int i = 0; i < E_COUNT; i++) {
+        vec_clear(&game.entities[i]);
+    }
+
+    game.state = GS_TITLE;
+    game.timers = (GameTimers){
+        .enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
+        .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
+        .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
+    };
+    game.camera = (Camera2D){
+        .target = (Vector2){ 0, 0 },
+        .zoom = 1.0f
+    };
+    game.player = (Entity){
+        .x = screensize().x / 2,
+        .y = screensize().y / 2,
+        .speed = 3,
+        .size = 6,
+        .max_hp = getattr(E_PLAYER, max_hp),
+        .hp = getattr(E_PLAYER, max_hp),
+        .invincible = false,
+    };
+}
+
 void DestroyGame(void) {
     CloseWindow();
     game.config.window_initialized = false;
@@ -154,8 +184,15 @@ void DestroyGame(void) {
     UnloadTexture(game.textures.background);
 }
 
+/* contains initialization logic for each state */
 void SetState(GameState new_state) {
     GameState old_state = game.state;
+    
+    /* if starting over */
+    if (old_state == GS_GAMEOVER && new_state == GS_GAMEPLAY) {
+        ReinitGame();
+    }
+
     game.state = new_state;
 }
 
@@ -291,6 +328,7 @@ void DrawPaused(void) {
 void DrawGameover(void) {
     ClearBackground(RAYWHITE);
     DrawText("gameover screen", 100, 100, 20, RED);
+    DrawButton(game.ui.restart_btn);
 }
 
 /* draw functions */
@@ -671,6 +709,10 @@ Entity *player_closest_entity(EntityType type) {
 /* callbacks */
 
 void StartBtnCallback(void) {
+    SetState(GS_GAMEPLAY);
+}
+
+void RestartBtnCallback(void) {
     SetState(GS_GAMEPLAY);
 }
 

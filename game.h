@@ -91,7 +91,7 @@ typedef struct {
     GameTimers timers;
 
     struct {
-        Button start_btn, test_btn;
+        Button start_btn, restart_btn;
     } ui;
 
     GameState state;
@@ -106,9 +106,9 @@ typedef struct {
 
 void InitGame(void);
 void RunGame(void);
+void ReinitGame(void);
 void DestroyGame(void);
 
-// contains initialization logic for each state
 void SetState(GameState s);
 
 void HandleInput(void);
@@ -173,6 +173,7 @@ Entity *player_closest_entity(EntityType);
 /* callbacks */
 
 void StartBtnCallback(void);
+void RestartBtnCallback(void);
 
 void EnemySpawnTimerCallback(void);
 void PlayerInvincTimerCallback(void);
