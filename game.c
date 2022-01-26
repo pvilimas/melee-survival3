@@ -8,7 +8,6 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - fix UI text shaking
     - impl the restart button (HARD) (maybe)
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
 
@@ -268,10 +267,10 @@ void DrawPaused(void) {
     BeginMode2D(game.camera);
 
     TileBackground();
-    DrawPlayer(true);
+    DrawGameUI();
+    DrawPlayer(false);
     HandleInput();
     UpdateCam();
-    DrawGameUI();
     ManageEntities(true, false);
 
     Vector2 offset = GraphicsGetScreenOffset();
@@ -393,10 +392,6 @@ void CollideBullets(void) {
 
 void DrawGameUI(void) {
     DisplayPlayerHP();
-
-    DrawButton((Button){
-        10, 10, 5, 5, "a", DoNothingCallback
-    });
 }
 
 void DisplayPlayerHP(void) {
