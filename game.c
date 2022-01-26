@@ -240,7 +240,6 @@ void UpdateCam(void) {
 
 void DrawTitle(void) {
     ClearBackground((Color){170, 170, 170, 255});
-    // TODO: make this scale with screen size, make it % based like the buttons
     DrawTextUI("Melee Survival", 50, 45, 50, BLACK);
     DrawButton(game.ui.start_btn);
 }
@@ -248,11 +247,8 @@ void DrawTitle(void) {
 void DrawGameplay(void) {
 
     BeginMode2D(game.camera);
-    
-    if (TimeIntervalPassed(&game.timers.player_invinc)) {
-        game.player.invincible = false;
-    }
 
+    CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.enemy_spawn);
 
