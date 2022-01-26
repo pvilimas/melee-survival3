@@ -6,9 +6,8 @@ ScreenSizeFunc GraphicsGetScreenSize;
 
 Button NewButton(float x, float y, float w, float h, const char *label, BtnCallback callback) {
     Button b = (Button) {
-        x, y, w, h, {0}, callback
+        x, y, w, h, label, callback
     };
-    strcpy(b.label, label);
     return b;
 }
 

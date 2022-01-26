@@ -3,6 +3,7 @@
 extern ScreenOffsetFunc GraphicsGetScreenOffset;
 extern ScreenSizeFunc GraphicsGetScreenSize;
 
+/* entity attribute access */
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
 
 /*
@@ -13,9 +14,9 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
     - add 3 more types of enemies and spawn all of them randomly
     - then make it scale over time
-    - then add a game timer
+    - then add a game timer (UI for how long you've been in the game)
     
-    - make sure DestroyGame works
+    - make sure DestroyGame works properly w/ no mem leaks
 
     - timed sprite that changes over time as a function of the time it's been on screen, then gets removed at the end
         - like incineration flames from magic survival
@@ -256,28 +257,25 @@ void DrawGameplay(void) {
     CheckTimer(&game.timers.enemy_spawn);
 
     TileBackground();
-    HandleInput();
-    DrawPlayer(true);
-    UpdateCam();
     DrawGameUI();
-
+    HandleInput();
+    UpdateCam();
+    DrawPlayer(true);
     ManageEntities(true, true);
 
-
     EndMode2D();
+    
 }
 
 void DrawPaused(void) {
 
     BeginMode2D(game.camera);
 
-
     TileBackground();
+    DrawPlayer(true);
     HandleInput();
-    DrawPlayer(false);
     UpdateCam();
     DrawGameUI();
-
     ManageEntities(true, false);
 
     Vector2 offset = GraphicsGetScreenOffset();
@@ -399,6 +397,10 @@ void CollideBullets(void) {
 
 void DrawGameUI(void) {
     DisplayPlayerHP();
+
+    DrawButton((Button){
+        10, 10, 5, 5, "a", DoNothingCallback
+    });
 }
 
 void DisplayPlayerHP(void) {
