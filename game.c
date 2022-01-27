@@ -8,7 +8,6 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - add a game timer (UI for how long you've been in the game)
     - add 3 more types of enemies and spawn all of them randomly
     - then make it scale over time
     
@@ -52,6 +51,7 @@ Game game = {
         },
     },
     .ui = {
+        .gametime = 0,
         .start_btn = (Button){
             38, 55, 24, 10, "Start", StartBtnCallback,
         },
@@ -172,6 +172,7 @@ void ReinitGame(void) {
         .hp = getattr(E_PLAYER, max_hp),
         .invincible = false,
     };
+    game.ui.gametime = 0;
 }
 
 void DestroyGame(void) {
@@ -208,8 +209,9 @@ void HandleInput(void) {
 
     // for debugging
     if (IsKeyPressed(KEY_K)) {
-        game.player.hp = 0;
-        return;
+        game.ui.gametime += 260000;
+        // game.player.hp = 0;
+        // return;
     }
 
     if (IsKeyPressed(KEY_P)) {
@@ -283,6 +285,10 @@ void UpdateCam(void) {
     game.camera.target = (Vector2){ game.player.x, game.player.y };
 }
 
+void UpdateGameTime(void) {
+    game.ui.gametime += 1.0 / game.config.target_fps;
+}
+
 /* gamestate draw functions */
 
 void DrawTitle(void) {
@@ -308,6 +314,8 @@ void DrawGameplay(void) {
     ManageEntities(true, true);
 
     EndMode2D();
+
+    UpdateGameTime();
     
 }
 
@@ -448,6 +456,7 @@ void CollideBullets(void) {
 
 void DrawGameUI(void) {
     DisplayPlayerHP();
+    DisplayGameTime();
 }
 
 void DisplayPlayerHP(void) {
@@ -498,6 +507,21 @@ void DisplayPlayerHP(void) {
     int width = 1;
     DrawRectangle(game.player.x - 21, game.player.y - 26, 42, 7, BLACK);
     DrawRectangle(game.player.x - 20, game.player.y - 25, width * proportion, 5, gradient[proportion]);
+}
+
+void DisplayGameTime(void) {
+    int secs = (int) game.ui.gametime;
+    int h = secs / 3600;
+    int m = (secs / 60) % 60;
+    int s = secs % 60;
+    char time_str[30];
+    if (h > 0) {
+        sprintf(time_str, "%02d:%02d:%02d", h, m, s);
+        DrawTextUI(time_str, 94, 5, 20, BLACK);
+    } else {
+        sprintf(time_str, "%02d:%02d", m, s);
+        DrawTextUI(time_str, 95, 5, 20, BLACK);
+    }
 }
 
 /* entity methods */

@@ -92,6 +92,7 @@ typedef struct {
 
     struct {
         Button start_btn, restart_btn;
+        float gametime;
     } ui;
 
     GameState state;
@@ -113,6 +114,8 @@ void SetState(GameState s);
 
 void HandleInput(void);
 void UpdateCam(void);
+
+void UpdateGameTime(void);
 
 /* gamestate draw functions */
 
@@ -140,6 +143,7 @@ void CollideBullets(void);
 void DrawGameUI(void);
 
 void DisplayPlayerHP(void);
+void DisplayGameTime(void);
 
 /* entity methods */
 
