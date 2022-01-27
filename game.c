@@ -8,16 +8,15 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
-
+    - add a game timer (UI for how long you've been in the game)
     - add 3 more types of enemies and spawn all of them randomly
     - then make it scale over time
-    - then add a game timer (UI for how long you've been in the game)
     
     - make sure DestroyGame works properly w/ no mem leaks
 
     - timed sprite that changes over time as a function of the time it's been on screen, then gets removed at the end
         - like incineration flames from magic survival
+    - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
 */
 
 // used to tile the background
