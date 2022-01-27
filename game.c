@@ -192,6 +192,12 @@ void SetState(GameState new_state) {
     if (old_state == GS_GAMEOVER && new_state == GS_GAMEPLAY) {
         ReinitGame();
     }
+    /* if player is dead */
+    else if (old_state == GS_GAMEPLAY && new_state == GS_GAMEOVER) {
+        game.player.x = screensize().x / 2;
+        game.player.y = screensize().y / 2;
+        UpdateCam();
+    }
 
     game.state = new_state;
 }
@@ -200,6 +206,12 @@ void HandleInput(void) {
     Entity *player = &game.player;
     float slow_speed = player->speed / (2 * sqrt(2.0));
     float fast_speed = player->speed;
+
+    // for debugging
+    if (IsKeyPressed(KEY_K)) {
+        game.player.hp = 0;
+        return;
+    }
 
     if (IsKeyPressed(KEY_P)) {
         if (game.state == GS_GAMEPLAY) {
@@ -326,9 +338,15 @@ void DrawPaused(void) {
 }
 
 void DrawGameover(void) {
-    ClearBackground(RAYWHITE);
-    DrawText("gameover screen", 100, 100, 20, RED);
+
+    BeginMode2D(game.camera);
+
+    ClearBackground((Color){170, 170, 170, 255});
     DrawButton(game.ui.restart_btn);
+    DrawTextUI("You Died", 50, 45, 50, BLACK);
+
+    EndMode2D();
+
 }
 
 /* draw functions */

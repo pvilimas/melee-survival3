@@ -5,10 +5,7 @@ ScreenOffsetFunc GraphicsGetScreenOffset;
 ScreenSizeFunc GraphicsGetScreenSize;
 
 Button NewButton(float x, float y, float w, float h, const char *label, BtnCallback callback) {
-    Button b = (Button) {
-        x, y, w, h, label, callback
-    };
-    return b;
+    return (Button) { x, y, w, h, label, callback };
 }
 
 void DrawButton(Button b) {
