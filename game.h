@@ -1,9 +1,9 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
-#include <math.h>       /* atan2, pow, sqrt */ 
+#include <math.h>       /* atan2, cos, pow, sin, sqrt */ 
 #include <stdio.h>      /* fprintf, sprintf */
-#include <stdbool.h>    /* bool */
+#include <stdbool.h>    /* bool, true, false */
 #include <unistd.h>     /* sleep */ 
 
 #include "raylib.h"

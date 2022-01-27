@@ -451,9 +451,54 @@ void DrawGameUI(void) {
 }
 
 void DisplayPlayerHP(void) {
-    char hp_str[15];
-    sprintf(hp_str, "HP: %d/%d", game.player.hp, game.player.max_hp);
-    DrawTextUI(hp_str, 87, 5, 30, BLACK);
+    static Color gradient[42] = {
+        (Color){ 219, 11, 11, 255 },
+        (Color){ 218, 20, 12, 255 },
+        (Color){ 216, 28, 13, 255 },
+        (Color){ 215, 37, 14, 255 },
+        (Color){ 213, 46, 15, 255 },
+        (Color){ 212, 55, 16, 255 },
+        (Color){ 211, 64, 17, 255 },
+        (Color){ 209, 72, 18, 255 },
+        (Color){ 208, 81, 19, 255 },
+        (Color){ 206, 90, 20, 255 },
+        (Color){ 205, 98, 21, 255 },
+        (Color){ 204, 107, 22, 255 },
+        (Color){ 202, 116, 23, 255 },
+        (Color){ 201, 125, 24, 255 },
+        (Color){ 199, 134, 25, 255 },
+        (Color){ 198, 142, 26, 255 },
+        (Color){ 197, 151, 27, 255 },
+        (Color){ 195, 160, 28, 255 },
+        (Color){ 194, 168, 29, 255 },
+        (Color){ 192, 177, 30, 255 },
+        (Color){ 191, 186, 31, 255 },
+        (Color){ 191, 186, 31, 255 },
+        (Color){ 182, 184, 29, 255 },
+        (Color){ 173, 182, 28, 255 },
+        (Color){ 165, 180, 26, 255 },
+        (Color){ 156, 178, 25, 255 },
+        (Color){ 147, 177, 23, 255 },
+        (Color){ 138, 175, 22, 255 },
+        (Color){ 129, 173, 20, 255 },
+        (Color){ 121, 171, 19, 255 },
+        (Color){ 112, 169, 17, 255 },
+        (Color){ 103, 167, 16, 255 },
+        (Color){ 94, 165, 14, 255 },
+        (Color){ 85, 163, 12, 255 },
+        (Color){ 77, 161, 11, 255 },
+        (Color){ 68, 159, 9, 255 },
+        (Color){ 59, 158, 8, 255 },
+        (Color){ 50, 156, 6, 255 },
+        (Color){ 41, 154, 5, 255 },
+        (Color){ 33, 152, 3, 255 },
+        (Color){ 24, 150, 2, 255 },
+        (Color){ 15, 148, 0, 255 }
+    };
+    int proportion = (int) (41 * game.player.hp / game.player.max_hp);
+    int width = 1;
+    DrawRectangle(game.player.x - 23, game.player.y - 26, 46, 7, BLACK);
+    DrawRectangle(game.player.x - 21, game.player.y - 25, width * proportion, 5, gradient[proportion]);
 }
 
 /* entity methods */
