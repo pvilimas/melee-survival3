@@ -13,10 +13,14 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
     
     - make sure DestroyGame works properly w/ no mem leaks
 
+    - "you lasted <time>" on the end screen
+    - add a couple more projectile types
+
     - timed sprite that changes over time as a function of the time it's been on screen, then gets removed at the end
         - like incineration flames from magic survival
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
-    - "you lasted <time>" on the end screen
+    - upgrade tree?
+    - keymaps?
 */
 
 // used to tile the background
