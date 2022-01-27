@@ -300,11 +300,12 @@ void DrawGameplay(void) {
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.enemy_spawn);
 
+    /* don't mess with this order */
     TileBackground();
     DrawGameUI();
+    DrawPlayer(true);
     HandleInput();
     UpdateCam();
-    DrawPlayer(true);
     ManageEntities(true, true);
 
     EndMode2D();
@@ -451,7 +452,7 @@ void DrawGameUI(void) {
 }
 
 void DisplayPlayerHP(void) {
-    static Color gradient[42] = {
+    static Color gradient[41] = {
         (Color){ 219, 11, 11, 255 },
         (Color){ 218, 20, 12, 255 },
         (Color){ 216, 28, 13, 255 },
@@ -493,12 +494,11 @@ void DisplayPlayerHP(void) {
         (Color){ 41, 154, 5, 255 },
         (Color){ 33, 152, 3, 255 },
         (Color){ 24, 150, 2, 255 },
-        (Color){ 15, 148, 0, 255 }
     };
-    int proportion = (int) (41 * game.player.hp / game.player.max_hp);
+    int proportion = (int) (40 * game.player.hp / game.player.max_hp);
     int width = 1;
-    DrawRectangle(game.player.x - 23, game.player.y - 26, 46, 7, BLACK);
-    DrawRectangle(game.player.x - 21, game.player.y - 25, width * proportion, 5, gradient[proportion]);
+    DrawRectangle(game.player.x - 21, game.player.y - 26, 42, 7, BLACK);
+    DrawRectangle(game.player.x - 20, game.player.y - 25, width * proportion, 5, gradient[proportion]);
 }
 
 /* entity methods */
