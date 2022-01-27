@@ -1,10 +1,18 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
+#if defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || defined(__MINGW32__) || defined(__BORLANDC__)
+#define OS_WIN
+#endif
+
 #include <math.h>       /* atan2, cos, pow, sin, sqrt */ 
 #include <stdio.h>      /* fprintf, sprintf */
 #include <stdbool.h>    /* bool, true, false */
-#include <unistd.h>     /* sleep */ 
+#ifdef OS_WIN
+#include <windows.h>    /* sleep */
+#else
+#include <unistd.h>     /* sleep */
+#endif
 
 #include "raylib.h"
 #include "vec.h"
