@@ -131,8 +131,8 @@ void TileBackground(void);
 void DrawPlayer(bool sprite_flickering);
 void DamagePlayer(int amount);
 
-void DrawEnemy(Entity*);
-void UpdateEnemy(Entity*);
+void DrawBasicEnemy(Entity*);
+void UpdateBasicEnemy(Entity*);
 
 void DrawBullet(Entity*);
 void UpdateBullet(Entity*);

@@ -16,6 +16,7 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
     - timed sprite that changes over time as a function of the time it's been on screen, then gets removed at the end
         - like incineration flames from magic survival
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
+    - "you lasted <time>" on the end screen
 */
 
 // used to tile the background
@@ -388,7 +389,7 @@ void DamagePlayer(int amount) {
     }
 }
 
-void DrawEnemy(Entity *enemy) {
+void DrawBasicEnemy(Entity *enemy) {
     DrawCircle(enemy->x, enemy->y, enemy->size, MAROON);
     DrawCircle(enemy->x, enemy->y, enemy->size * 2/3, RED);
 }
@@ -406,7 +407,7 @@ void DrawBullet(Entity *bullet) {
     );
 }
 
-void UpdateEnemy(Entity *enemy) {
+void UpdateBasicEnemy(Entity *enemy) {
     MoveEntityToPlayer(enemy);
 }
 
@@ -619,11 +620,11 @@ void ManageEntities(bool draw, bool update) {
                                 DamagePlayer(e->contact_damage);
                             }
                         }
-                        UpdateEnemy(e);
+                        UpdateBasicEnemy(e);
                     }
 
                     if (draw) {
-                        DrawEnemy(e);
+                        DrawBasicEnemy(e);
                     }
 
                     break;
