@@ -20,7 +20,7 @@ typedef struct {
     BtnCallback on_click;
 } Button;
 
-void DrawTextUI(const char *text, float x_percent, float y_percent, int fontSize, Color color);
+void DrawTextUI(const char *text, float x_percent, float y_percent, float fontSize, Color color);
 
 /* button methods */
 

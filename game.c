@@ -8,7 +8,9 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /*
     TODO:
-    - add 3 more types of enemies and spawn all of them randomly
+    - enemy large has been added, make it work and shit
+    - rename game.timers.basic_enemy_spawn to basic enemy
+    - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
     
     - make sure DestroyGame works properly w/ no mem leaks
@@ -47,6 +49,14 @@ Game game = {
                 .size = 6,
                 .max_hp = 100,
                 .contact_damage = 10,
+            },
+            [E_ENEMY_LARGE] = {
+                .spawn_interval = 5,
+                .spawn_margin = 1.5,
+                .speed = 0.3,
+                .size = 30,
+                .max_hp = 1000,
+                .contact_damage = 40,
             },
             [E_PLAYER_BULLET] = {
                 .spawn_interval = 1.0,
@@ -91,7 +101,7 @@ void InitGame(void) {
 
     game.state = GS_TITLE;
     game.timers = (GameTimers){
-        .enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
+        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
         .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
         .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
     };
@@ -160,7 +170,7 @@ void ReinitGame(void) {
 
     game.state = GS_TITLE;
     game.timers = (GameTimers){
-        .enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
+        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
         .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
         .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
     };
@@ -308,7 +318,7 @@ void DrawGameplay(void) {
 
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
-    CheckTimer(&game.timers.enemy_spawn);
+    CheckTimer(&game.timers.basic_enemy_spawn);
 
     /* don't mess with this order */
     TileBackground();

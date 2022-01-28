@@ -27,6 +27,7 @@ typedef enum {
     /* enemy types */
 
     E_ENEMY_BASIC,
+    E_ENEMY_LARGE,
 
     /* projectile types */
 
@@ -77,7 +78,7 @@ typedef struct {
 } EntityAttrs;
 
 typedef struct {
-    Timer enemy_spawn, player_invinc, player_fire_bullet;
+    Timer basic_enemy_spawn, player_invinc, player_fire_bullet;
 } GameTimers;
 
 typedef struct {
