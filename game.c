@@ -5,11 +5,13 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 
 /* entity attribute access */
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
+// 50/50 chance
+#define cointoss(a, b) ((rand() % 2) ? a : b)
 
 /*
     TODO:
-    - enemy large has been added, make it work and shit
-    - rename game.timers.basic_enemy_spawn to basic enemy
+    - enemy large has been added, make it work and shit (fix segfaults when starting + restarting)
+    - game texture struct, with a path and data
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
     
@@ -55,12 +57,13 @@ Game game = {
                 .spawn_margin = 1.5,
                 .speed = 0.3,
                 .size = 30,
-                .max_hp = 1000,
+                .max_hp = 500,
                 .contact_damage = 40,
             },
             [E_PLAYER_BULLET] = {
                 .spawn_interval = 1.0,
                 .speed = 4.0,
+                .size = 4.0,
                 .contact_damage = 100,
             },
         },
@@ -101,7 +104,8 @@ void InitGame(void) {
 
     game.state = GS_TITLE;
     game.timers = (GameTimers){
-        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
+        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), BasicEnemySpawnTimerCallback),
+        .large_enemy_spawn = NewTimer(getattr(E_ENEMY_LARGE, spawn_interval), LargeEnemySpawnTimerCallback),
         .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
         .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
     };
@@ -170,7 +174,8 @@ void ReinitGame(void) {
 
     game.state = GS_TITLE;
     game.timers = (GameTimers){
-        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), EnemySpawnTimerCallback),
+        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), BasicEnemySpawnTimerCallback),
+        .large_enemy_spawn = NewTimer(getattr(E_ENEMY_LARGE, spawn_interval), LargeEnemySpawnTimerCallback),
         .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
         .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
     };
@@ -319,6 +324,7 @@ void DrawGameplay(void) {
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.basic_enemy_spawn);
+    CheckTimer(&game.timers.large_enemy_spawn);
 
     /* don't mess with this order */
     TileBackground();
@@ -425,12 +431,22 @@ void UpdateBasicEnemy(Entity *enemy) {
     MoveEntityToPlayer(enemy);
 }
 
+void DrawLargeEnemy(Entity *enemy) {
+    DrawCircle(enemy->x, enemy->y, enemy->size, BLACK);
+    DrawCircle(enemy->x, enemy->y, enemy->size * 2/3, MAROON);
+}
+
+void UpdateLargeEnemy(Entity *enemy) {
+    MoveEntityToPlayer(enemy);
+}
+
+
 void UpdateBullet(Entity *bullet) {
     bullet->x += bullet->speed * cos(bullet->angle);
     bullet->y += bullet->speed * sin(bullet->angle);
 }
 
-/* checks all player bullets with all basic enemies to see if any collided, then remove if they did */
+/* checks all player bullets withs enemies to see if any collided, then remove if they did */
 void CollideBullets(void) {
 
     EntityVec *bullets, *enemies;
@@ -465,6 +481,35 @@ void CollideBullets(void) {
             }
         } 
     }
+
+    enemies = &game.entities[E_ENEMY_LARGE];
+    if (vec_empty(enemies)) {
+        return;
+    }
+
+    for (int i = 0; i < enemies->length; i++) {
+        enemy = enemies->data[i];
+        for (int j = 0; j < bullets->length; i++) {
+            bullet = bullets->data[j];
+            if (is_collision(enemy, bullet)) {
+                enemy.hp -= bullet.contact_damage;
+                if (enemy.hp <= 0) {
+                    // remove enemy
+                    vec_remove(enemies, i);
+                    i--;
+                }
+                
+
+                // remove bullet
+                vec_remove(bullets, j);
+                j--;
+
+                // bullet has been deleted, so return
+                return;
+            }
+        } 
+    }
+
 }
 
 /* game ui elements */
@@ -544,9 +589,10 @@ void DisplayGameTime(void) {
 Rectangle EntityHitbox(Entity e) {
     switch (e.type) {
         case E_ENEMY_BASIC:     return (Rectangle){ e.x-3, e.y-3, 6.0, 6.0 };
+        case E_ENEMY_LARGE:     return (Rectangle){ e.x-15, e.y-15, 30.0, 30.0};
         case E_PLAYER_BULLET:   return (Rectangle){ e.x-2, e.y-2, 4.0, 4.0 };
         case E_PLAYER:          return (Rectangle){ e.x-4, e.y-4, 8.0, 8.0 };
-        default:                return (Rectangle){ };
+        default:                return (Rectangle){ e.x-e.size/2, e.y-e.size/2, e.size, e.size };
     }
 }
 
@@ -603,15 +649,37 @@ void ManageEntities(bool draw, bool update) {
                                 }
                             }
                             UpdateBullet(e);
-                        }
+                        
+                        
+                            targetlist = &game.entities[E_ENEMY_LARGE];
+                                for (int j = 0; j < targetlist->length; j++) {
+                                    target = &targetlist->data[j];
+                                    if (is_collision(*e, *target)) {
+                                        target->hp -= e->contact_damage;
+                                        if (target->hp <= 0) {
+                                            // remove target
+                                            vec_remove(targetlist, j);
+                                            j--;
+                                        }
+                                        
+                                        // remove bullet
+                                        vec_remove(entlist, i);
+                                        i--;
 
-                        if (draw) {
-                           DrawBullet(e);
+                                        continue;
+                                    }
+                                }
+                                UpdateBullet(e);
                         }
                     }
 
-                    break;
+                    if (draw) {
+                        DrawBullet(e);
+                    }
                 }
+
+                break;
+                
                 case E_ENEMY_BASIC: {
                     
                     if (update) {
@@ -643,14 +711,44 @@ void ManageEntities(bool draw, bool update) {
 
                     break;
                 }
+                case E_ENEMY_LARGE: {
+                    
+                    if (update) {
+                        // if two enemies have the "same" xy pos, remove one
+                        targetlist = &game.entities[E_ENEMY_LARGE];
+                        for (int j = 0; j < targetlist->length; j++) {
+                            target = &targetlist->data[j];
+                            
+                            if (i == j)
+                                continue;
+
+                            /* optimization - enemy merging - keep it like this */
+                            if (entity_distance(*e, *target) < 0.5) {
+                                // remove other
+                                vec_remove(targetlist, j);
+                                j--;
+                            }
+
+                            if (is_collision(game.player, *e)) {
+                                DamagePlayer(e->contact_damage);
+                            }
+                        }
+                        UpdateLargeEnemy(e);
+                    }
+
+                    if (draw) {
+                        DrawLargeEnemy(e);
+                    }
+
+                    break;
+                }
                 default: break;
             }
-
         }
     }
 }
 
-Entity RandSpawnEnemy(void) {
+Entity RandSpawnEnemy(EntityType type) {
     float x, y;
     x = randrange(game.player.x - (game.config.screen_margin * GetScreenWidth()/2), game.player.x + (game.config.screen_margin * GetScreenWidth()/2));
     
@@ -671,20 +769,20 @@ Entity RandSpawnEnemy(void) {
     // printf("spawning at (%f, %f)\n", x, y);
 
     return (Entity){
-        .type = E_ENEMY_BASIC,
+        .type = type,
         .x = x,
         .y = y,
-        .size = getattr(E_ENEMY_BASIC, size),
-        .speed = getattr(E_ENEMY_BASIC, speed),
-        .max_hp = getattr(E_ENEMY_BASIC, max_hp),
-        .hp = getattr(E_ENEMY_BASIC, max_hp),
-        .contact_damage = getattr(E_ENEMY_BASIC, contact_damage),
+        .size = getattr(type, size),
+        .speed = getattr(type, speed),
+        .max_hp = getattr(type, max_hp),
+        .hp = getattr(type, max_hp),
+        .contact_damage = getattr(type, contact_damage),
     };
 }
 
 /* Fires at direction of closest enemy and keeps going in that direction (not homing bullets) */
 Entity PlayerFireBullet(void) {
-    Entity *p = player_closest_entity(E_ENEMY_BASIC);
+    Entity *p = player_closest_enemy();
     if (p == NULL) {
         // no enemies to shoot at, so don't fire any bullets
         // NONE means it's invalid
@@ -692,12 +790,11 @@ Entity PlayerFireBullet(void) {
             .type = E_NONE
         };
     }
-
     return (Entity) {
         .type = E_PLAYER_BULLET,
         .x = game.player.x,
         .y = game.player.y,
-        .size = getattr(E_ENEMY_BASIC, size),
+        .size = getattr(E_PLAYER_BULLET, size),
         .speed = getattr(E_PLAYER_BULLET, speed),
         .angle = entity_angle(game.player, *p),
         .contact_damage = getattr(E_PLAYER_BULLET, contact_damage)
@@ -744,9 +841,16 @@ float randfloat(float min, float max) {
     return min + scale * ( max - min );      /* [min, max] */
 }
 
-// 50/50 chance
-float cointoss(float a, float b) {
-    return (float) ((rand() % 2) ? a : b);
+float randchoice(size_t count, float *probs, ...) {
+    va_list opts;
+    float r = randrange(0, count-1);
+    float ret;
+    va_start(opts, probs);
+    for (int i = 0; i <= r; i++) {
+        ret = va_arg(opts, float);
+    }
+    va_end(opts);
+    return ret;
 }
 
 float distance(Vector2 a, Vector2 b) {
@@ -787,15 +891,46 @@ float entity_angle(Entity a, Entity b) {
     );
 }
 
+Entity *player_closest_enemy(void) {
+
+    float smallest_dist = 10000.0, temp;
+    int closest_index;
+    EntityType closest_type;
+
+    EntityVec *entvec;
+
+    static EntityType enemytypes[] = { E_ENEMY_BASIC, E_ENEMY_LARGE };
+
+    for (int etype = 0; etype < 2; etype++) {
+        entvec = &game.entities[enemytypes[etype]];
+        if (entvec->data == NULL){
+            continue;
+        }
+        
+        for (int i = 0; i < entvec->length; i++) {
+
+            if ((temp = entity_distance(game.player, entvec->data[i])) < smallest_dist) {
+
+                smallest_dist = temp;
+                closest_index = i;
+                closest_type = etype;
+                continue;
+            }
+        }
+    }
+
+    return &game.entities[closest_type].data[closest_index];
+}
+
 Entity *player_closest_entity(EntityType type) {
+    float dist = 10000.0, temp;
+    int closest;
+    
     EntityVec *entvec = &game.entities[type];
 
     if (entvec->data == NULL){
         return NULL;
     }
-
-    float dist = 10000.0, temp;
-    int closest;
     
     for (int i = 0; i < entvec->length; i++) {
         if ((temp = entity_distance(game.player, entvec->data[i])) < dist) {
@@ -804,6 +939,7 @@ Entity *player_closest_entity(EntityType type) {
             continue;
         }
     }
+
     return &entvec->data[closest];
 }
 
@@ -817,8 +953,12 @@ void RestartBtnCallback(void) {
     SetState(GS_GAMEPLAY);
 }
 
-void EnemySpawnTimerCallback(void) {
-    vec_push(&game.entities[E_ENEMY_BASIC], RandSpawnEnemy());
+void BasicEnemySpawnTimerCallback(void) {
+    vec_push(&game.entities[E_ENEMY_BASIC], RandSpawnEnemy(E_ENEMY_BASIC));
+}
+
+void LargeEnemySpawnTimerCallback(void) {
+    vec_push(&game.entities[E_ENEMY_LARGE], RandSpawnEnemy(E_ENEMY_LARGE));
 }
 
 void PlayerInvincTimerCallback(void) {

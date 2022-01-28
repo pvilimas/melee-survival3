@@ -1,18 +1,11 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
-#if defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || defined(__MINGW32__) || defined(__BORLANDC__)
-#define OS_WIN
-#endif
-
 #include <math.h>       /* atan2, cos, pow, sin, sqrt */ 
-#include <stdio.h>      /* fprintf, sprintf */
+#include <stdarg.h>     /* va_list */
 #include <stdbool.h>    /* bool, true, false */
-#ifdef OS_WIN
-#include <windows.h>    /* sleep */
-#else
+#include <stdio.h>      /* fprintf, sprintf */
 #include <unistd.h>     /* sleep */
-#endif
 
 #include "raylib.h"
 #include "vec.h"
@@ -78,7 +71,10 @@ typedef struct {
 } EntityAttrs;
 
 typedef struct {
-    Timer basic_enemy_spawn, player_invinc, player_fire_bullet;
+    Timer basic_enemy_spawn,
+        large_enemy_spawn,
+        player_invinc,
+        player_fire_bullet;
 } GameTimers;
 
 typedef struct {
@@ -143,6 +139,9 @@ void DamagePlayer(int amount);
 void DrawBasicEnemy(Entity*);
 void UpdateBasicEnemy(Entity*);
 
+void DrawLargeEnemy(Entity*);
+void UpdateLargeEnemy(Entity*);
+
 void DrawBullet(Entity*);
 void UpdateBullet(Entity*);
 void CollideBullets(void);
@@ -160,7 +159,7 @@ Rectangle EntityHitbox(Entity);
 
 void ManageEntities(bool draw, bool update);
 
-Entity RandSpawnEnemy(void);
+Entity RandSpawnEnemy(EntityType);
 Entity PlayerFireBullet(void);
 
 void MoveEntityToPlayer(Entity*);
@@ -172,7 +171,7 @@ Vector2 screen_offset(void);
 
 int randrange(int min, int max);
 float randfloat(float min, float max);
-float cointoss(float a, float b);
+float randchoice(size_t count, float *probs, ...);
 
 float distance(Vector2, Vector2);
 
@@ -182,13 +181,15 @@ bool entity_offscreen(Entity);
 float entity_distance(Entity, Entity);
 float entity_angle(Entity, Entity);
 Entity *player_closest_entity(EntityType);
+Entity *player_closest_enemy(void);
 
 /* callbacks */
 
 void StartBtnCallback(void);
 void RestartBtnCallback(void);
 
-void EnemySpawnTimerCallback(void);
+void BasicEnemySpawnTimerCallback(void);
+void LargeEnemySpawnTimerCallback(void);
 void PlayerInvincTimerCallback(void);
 void PlayerBulletTimerCallback(void);
 

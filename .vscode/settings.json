@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.pl": "prolog",
+        "*.rb": "ruby",
         "__locale": "c",
         "atomic": "c",
         "bit": "c",
@@ -45,7 +46,11 @@
         "unordered_map": "c",
         "utility": "c",
         "vector": "c",
-        "numbers": "c"
+        "numbers": "c",
+        "chrono": "c",
+        "compare": "c",
+        "ratio": "c",
+        "tuple": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

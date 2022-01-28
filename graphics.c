@@ -55,7 +55,6 @@ void DrawTextUI(const char *text, float x_percent, float y_percent, float fontSi
     float w = MeasureText(text, fontSize);
     float h = fontSize; // right?
 
-//    DrawText(text, x-((float) w/2.0), y-((float) h/2.0), fontSize, color);
     DrawTextEx(GetFontDefault(), text, (Vector2){x-w/2, y-h/2}, fontSize, 1.0f, color);
 }
 
