@@ -7,6 +7,8 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
 // 50/50 chance
 #define cointoss(a, b) ((rand() % 2) ? a : b)
+#define debug fprintf("%s:%d\n", __FILE__, __LINE__)
+FILE *errorlog;
 
 /*
     TODO:
@@ -16,6 +18,7 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
     - then make it scale over time
     
     - make sure DestroyGame works properly w/ no mem leaks
+    - impl GameSleep with GetTime for cross platform
 
     - "you lasted <time>" on the end screen
     - add a couple more projectile types
@@ -83,13 +86,16 @@ Game game = {
 /* game methods */
 
 void InitGame(void) {
+    //printf("%d\n", 89);
 
+    errorlog = fopen("errorlog", "w");
+    
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
     SetExitKey(KEY_ESCAPE);
     InitWindow(screensize().x, screensize().y, "Melee Survival");
     SetTargetFPS(game.config.target_fps);
     game.config.window_initialized = true;
-
+    
     GraphicsGetScreenOffset = screen_offset;
     GraphicsGetScreenSize = screensize;
 
@@ -122,26 +128,24 @@ void InitGame(void) {
         .hp = getattr(E_PLAYER, max_hp),
         .invincible = false,
     };
-
 }
 
 void RunGame(void) {
-
+    
     while (!WindowShouldClose()) {
-
         /* FPS control */
         static const double frametime = 1.0 / 60.0;
         double time = GetTime();
-
         BeginDrawing();
-
         switch(game.state) {
             case GS_TITLE: {
                 DrawTitle();
                 break;
             }
             case GS_GAMEPLAY: {
+                //printf("%d\n", 146);
                 DrawGameplay();
+                //printf("%d\n", 148);
                 if (game.player.hp <= 0) {
                     SetState(GS_GAMEOVER);
                 }
@@ -229,9 +233,9 @@ void HandleInput(void) {
 
     // for debugging
     if (IsKeyPressed(KEY_K)) {
-        game.ui.gametime += 260000;
-        // game.player.hp = 0;
-        // return;
+        //game.ui.gametime += 260000;
+        game.player.hp = 0;
+        return;
     }
 
     if (IsKeyPressed(KEY_P)) {
@@ -318,13 +322,16 @@ void DrawTitle(void) {
 }
 
 void DrawGameplay(void) {
-
     BeginMode2D(game.camera);
+
+    //printf("%d\n", 327);
 
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.basic_enemy_spawn);
-    CheckTimer(&game.timers.large_enemy_spawn);
+    //CheckTimer(&game.timers.large_enemy_spawn);
+    
+    //printf("%d\n", 334);
 
     /* don't mess with this order */
     TileBackground();
@@ -333,11 +340,10 @@ void DrawGameplay(void) {
     HandleInput();
     UpdateCam();
     ManageEntities(true, true);
-
-    EndMode2D();
-
-    UpdateGameTime();
+    //printf("%d\n", 343);
     
+    EndMode2D();
+    UpdateGameTime();
 }
 
 void DrawPaused(void) {
@@ -444,72 +450,6 @@ void UpdateLargeEnemy(Entity *enemy) {
 void UpdateBullet(Entity *bullet) {
     bullet->x += bullet->speed * cos(bullet->angle);
     bullet->y += bullet->speed * sin(bullet->angle);
-}
-
-/* checks all player bullets withs enemies to see if any collided, then remove if they did */
-void CollideBullets(void) {
-
-    EntityVec *bullets, *enemies;
-    Entity bullet, enemy;
-
-    enemies = &game.entities[E_ENEMY_BASIC];
-    bullets = &game.entities[E_PLAYER_BULLET];
-
-    if (vec_empty(enemies) || vec_empty(bullets)) {
-        return;
-    }
-
-    for (int i = 0; i < enemies->length; i++) {
-        enemy = enemies->data[i];
-        for (int j = 0; j < bullets->length; i++) {
-            bullet = bullets->data[j];
-            if (is_collision(enemy, bullet)) {
-                enemy.hp -= bullet.contact_damage;
-                if (enemy.hp <= 0) {
-                    // remove enemy
-                    vec_remove(enemies, i);
-                    i--;
-                }
-                
-
-                // remove bullet
-                vec_remove(bullets, j);
-                j--;
-
-                // bullet has been deleted, so return
-                return;
-            }
-        } 
-    }
-
-    enemies = &game.entities[E_ENEMY_LARGE];
-    if (vec_empty(enemies)) {
-        return;
-    }
-
-    for (int i = 0; i < enemies->length; i++) {
-        enemy = enemies->data[i];
-        for (int j = 0; j < bullets->length; i++) {
-            bullet = bullets->data[j];
-            if (is_collision(enemy, bullet)) {
-                enemy.hp -= bullet.contact_damage;
-                if (enemy.hp <= 0) {
-                    // remove enemy
-                    vec_remove(enemies, i);
-                    i--;
-                }
-                
-
-                // remove bullet
-                vec_remove(bullets, j);
-                j--;
-
-                // bullet has been deleted, so return
-                return;
-            }
-        } 
-    }
-
 }
 
 /* game ui elements */
@@ -629,7 +569,8 @@ void ManageEntities(bool draw, bool update) {
 
                         
                         if (update) {
-                            // check for any collisions
+
+                            // check for any collisions with enemies
                             targetlist = &game.entities[E_ENEMY_BASIC];
                             for (int j = 0; j < targetlist->length; j++) {
                                 target = &targetlist->data[j];
@@ -650,27 +591,28 @@ void ManageEntities(bool draw, bool update) {
                             }
                             UpdateBullet(e);
                         
-                        
                             targetlist = &game.entities[E_ENEMY_LARGE];
-                                for (int j = 0; j < targetlist->length; j++) {
-                                    target = &targetlist->data[j];
-                                    if (is_collision(*e, *target)) {
-                                        target->hp -= e->contact_damage;
-                                        if (target->hp <= 0) {
-                                            // remove target
-                                            vec_remove(targetlist, j);
-                                            j--;
-                                        }
-                                        
-                                        // remove bullet
-                                        vec_remove(entlist, i);
-                                        i--;
-
-                                        continue;
+                            for (int j = 0; j < targetlist->length; j++) {
+                                target = &targetlist->data[j];
+                                if (is_collision(*e, *target)) {
+                                    target->hp -= e->contact_damage;
+                                    if (target->hp <= 0) {
+                                        // remove target
+                                        vec_remove(targetlist, j);
+                                        j--;
                                     }
+                                    
+                                    // remove bullet
+                                    vec_remove(entlist, i);
+                                    i--;
+
+                                    continue;
                                 }
-                                UpdateBullet(e);
+                            }
+                            UpdateBullet(e);
+                            
                         }
+
                     }
 
                     if (draw) {
@@ -685,6 +627,9 @@ void ManageEntities(bool draw, bool update) {
                     if (update) {
                         // if two enemies have the "same" xy pos, remove one
                         targetlist = &game.entities[E_ENEMY_BASIC];
+                        if (vec_empty(targetlist)) {
+                            break;
+                        }
                         for (int j = 0; j < targetlist->length; j++) {
                             target = &targetlist->data[j];
                             
@@ -716,6 +661,9 @@ void ManageEntities(bool draw, bool update) {
                     if (update) {
                         // if two enemies have the "same" xy pos, remove one
                         targetlist = &game.entities[E_ENEMY_LARGE];
+                        if (vec_empty(targetlist)) {
+                            break;
+                        }
                         for (int j = 0; j < targetlist->length; j++) {
                             target = &targetlist->data[j];
                             
@@ -894,10 +842,30 @@ float entity_angle(Entity a, Entity b) {
 Entity *player_closest_enemy(void) {
 
     float smallest_dist = 10000.0, temp;
-    int closest_index;
-    EntityType closest_type;
+    int closest_index = -1;
+    EntityType closest_type = -1;
 
     EntityVec *entvec;
+/*
+    
+    entvec = &game.entities[E_ENEMY_BASIC];
+    if (entvec->data == NULL){
+        return NULL;
+    }
+    
+    for (int i = 0; i < entvec->length; i++) {
+
+        if ((temp = entity_distance(game.player, entvec->data[i])) < smallest_dist) {
+
+            smallest_dist = temp;
+            closest_index = i;
+            continue;
+        }
+    }
+
+    return &game.entities[E_ENEMY_BASIC].data[closest_index];
+    */
+
 
     static EntityType enemytypes[] = { E_ENEMY_BASIC, E_ENEMY_LARGE };
 
@@ -919,7 +887,8 @@ Entity *player_closest_enemy(void) {
         }
     }
 
-    return &game.entities[closest_type].data[closest_index];
+    return (closest_type != E_NONE && closest_index != -1) ? &game.entities[closest_type].data[closest_index] : NULL;
+    
 }
 
 Entity *player_closest_entity(EntityType type) {

@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "raylib.h"
+
 #define VEC_VERSION "0.2.1"
 
 
@@ -27,7 +29,7 @@
 
 
 #define vec_deinit(v)\
-  ( free((v)->data),\
+  ( MemFree((v)->data),\
     vec_init(v) ) 
 
 

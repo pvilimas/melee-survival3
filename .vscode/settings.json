@@ -50,7 +50,9 @@
         "chrono": "c",
         "compare": "c",
         "ratio": "c",
-        "tuple": "c"
+        "tuple": "c",
+        "vec.h": "c",
+        "algorithm": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

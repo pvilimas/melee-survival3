@@ -23,4 +23,4 @@ bool TimeIntervalPassed(Timer*);
 void CheckTimer(Timer*);
 void ResetTimer(Timer*); 
 
-#endif 
+#endif

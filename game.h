@@ -144,7 +144,6 @@ void UpdateLargeEnemy(Entity*);
 
 void DrawBullet(Entity*);
 void UpdateBullet(Entity*);
-void CollideBullets(void);
 
 /* game ui elements */
 

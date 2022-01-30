@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=gnu11 -Wall -Wextra
+CFLAGS = -std=gnu11 -Wall -Wextra -pedantic #-fsanitize=address -fsanitize=undefined -g
 LFLAGS = -lm -Iinclude -lraylib
 SRC = main.c game.c graphics.c timer.c vec.c
 
