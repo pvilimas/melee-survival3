@@ -1,7 +1,7 @@
 #include "game.h"
 
-extern ScreenOffsetFunc GraphicsGetScreenOffset;
 extern ScreenSizeFunc GraphicsGetScreenSize;
+extern ScreenOffsetFunc GraphicsGetScreenOffset;
 
 /* entity attribute access */
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
@@ -11,8 +11,7 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 /*
     TODO:
 
-    - add exploding bullet that fires toward mouse cursor
-    - rework player subspawn type and interval to hold more than 1 ammo cause you'll need to
+    - make shells explode
 
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
@@ -100,7 +99,6 @@ Game game = {
 void InitGame(void) {
     
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
-    SetExitKey(KEY_ESCAPE);
     InitWindow(screensize().x, screensize().y, "Melee Survival");
     SetTargetFPS(game.config.target_fps);
     game.config.window_initialized = true;
