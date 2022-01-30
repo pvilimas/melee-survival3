@@ -25,6 +25,7 @@ typedef enum {
     /* projectile types */
 
     E_PLAYER_BULLET,
+    E_PLAYER_SHELL,
 
     /* how many types there are, excluding player */
     E_COUNT,
@@ -50,22 +51,19 @@ typedef enum {
 } GameState;
 
 typedef vec_t(Entity) EntityVec;
-
 typedef struct {
     // in seconds
     float spawn_interval;
-    // % border around the screen (1.20 = 120%), used if it spawns randomly
-    float spawn_margin;
-    // what it spawns
-    EntityType subspawn_type;
-    // how often, in seconds
-    float subspawn_interval;
+    // how often it spawns the thing, in seconds (0 = does not spawn it)
+    float child_spawns[E_COUNT];
     // just for the player (sec)
     float invincibility_time;
     // speed in pixels per frame
     float speed;
     // draw size
     float size;
+    // unused for now
+    float explosion_radius;
     int max_hp;
     int contact_damage;
 } EntityAttrs;
@@ -74,7 +72,8 @@ typedef struct {
     Timer basic_enemy_spawn,
         large_enemy_spawn,
         player_invinc,
-        player_fire_bullet;
+        player_fire_bullet,
+        player_fire_shell;
 } GameTimers;
 
 typedef struct {
@@ -89,6 +88,7 @@ typedef struct {
         Vector2 window_init_dim;
         bool window_initialized;
         int target_fps;
+        float animation_frametime;
         /* in % of the screen size, anything outside of here is considered offscreen. enemies spawn here. [0] is the inner bound, [1] is outer */
         float screen_margin[2];
         /* +2 for player */
@@ -131,6 +131,8 @@ void UpdateGameTime(void);
 void InitTexture(GameTexture*);
 void DeinitTexture(GameTexture*);
 
+void InitGameTimers(void);
+
 void GameSleep(float secs);
 
 /* gamestate draw functions */
@@ -153,8 +155,11 @@ void UpdateBasicEnemy(Entity*);
 void DrawLargeEnemy(Entity*);
 void UpdateLargeEnemy(Entity*);
 
+void DrawProjectile(Entity*);
+void UpdateProjectile(Entity*);
+
 void DrawBullet(Entity*);
-void UpdateBullet(Entity*);
+void DrawShell(Entity*);
 
 /* game ui elements */
 
@@ -171,6 +176,7 @@ void ManageEntities(bool draw, bool update);
 
 Entity RandSpawnEnemy(EntityType);
 Entity PlayerFireBullet(void);
+Entity PlayerFireShell(void);
 
 void MoveEntityToPlayer(Entity*);
 
@@ -190,6 +196,7 @@ bool entity_offscreen(Entity);
 
 float entity_distance(Entity, Entity);
 float entity_angle(Entity, Entity);
+float vec_angle(Vector2, Vector2);
 Entity *player_closest_entity(EntityType);
 Entity *player_closest_enemy(void);
 
@@ -202,6 +209,7 @@ void BasicEnemySpawnTimerCallback(void);
 void LargeEnemySpawnTimerCallback(void);
 void PlayerInvincTimerCallback(void);
 void PlayerBulletTimerCallback(void);
+void PlayerShellTimerCallback(void);
 
 void DoNothingCallback(void);
 

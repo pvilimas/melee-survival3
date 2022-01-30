@@ -35,18 +35,20 @@ Game game = {
         .window_initialized = false,
         .window_init_dim = (Vector2) { 800, 500 },
         .target_fps = 60,
+        .animation_frametime = 1.0 / 60,
         .screen_margin = { 1.2, 1.5 },
         .entitydata = {
             [E_PLAYER] = {
-                .subspawn_type = E_PLAYER_BULLET,
-                .subspawn_interval = 1.0,
+                .child_spawns = {
+                    [E_PLAYER_BULLET] = 1.0f,
+                    [E_PLAYER_SHELL] = 5.0f,
+                },
                 .max_hp = 100,
                 .invincibility_time = 1.0,
                 .contact_damage = 0,
             },
             [E_ENEMY_BASIC] = {
                 .spawn_interval = 0.5,
-                .spawn_margin = 1.5,
                 .speed = 1.0,
                 .size = 6,
                 .max_hp = 100,
@@ -54,7 +56,6 @@ Game game = {
             },
             [E_ENEMY_LARGE] = {
                 .spawn_interval = 5,
-                .spawn_margin = 1.5,
                 .speed = 0.3,
                 .size = 30,
                 .max_hp = 500,
@@ -66,6 +67,13 @@ Game game = {
                 .size = 4.0,
                 .contact_damage = 100,
             },
+            [E_PLAYER_SHELL] = {
+                .spawn_interval = 5.0,
+                .speed = 6.0,
+                .size = 8.0,
+                .contact_damage = 200,
+                .explosion_radius = 10.0,
+            }
         },
     },
     .ui = {
@@ -107,12 +115,7 @@ void InitGame(void) {
     InitTexture(&game.textures.background);
 
     game.state = GS_TITLE;
-    game.timers = (GameTimers){
-        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), BasicEnemySpawnTimerCallback),
-        .large_enemy_spawn = NewTimer(getattr(E_ENEMY_LARGE, spawn_interval), LargeEnemySpawnTimerCallback),
-        .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
-        .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
-    };
+    InitGameTimers();
     game.camera = (Camera2D){
         .target = (Vector2){ 0, 0 },
         .zoom = 1.0f
@@ -173,12 +176,7 @@ void ReinitGame(void) {
     }
 
     game.state = GS_TITLE;
-    game.timers = (GameTimers){
-        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), BasicEnemySpawnTimerCallback),
-        .large_enemy_spawn = NewTimer(getattr(E_ENEMY_LARGE, spawn_interval), LargeEnemySpawnTimerCallback),
-        .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
-        .player_fire_bullet = NewTimer(getattr(E_PLAYER, subspawn_interval), PlayerBulletTimerCallback),
-    };
+    InitGameTimers();
     game.camera = (Camera2D){
         .target = (Vector2){ 0, 0 },
         .zoom = 1.0f
@@ -322,6 +320,16 @@ void DeinitTexture(GameTexture* t) {
     t->loaded = false;
 }
 
+void InitGameTimers(void) {
+    game.timers = (GameTimers){
+        .basic_enemy_spawn = NewTimer(getattr(E_ENEMY_BASIC, spawn_interval), BasicEnemySpawnTimerCallback),
+        .large_enemy_spawn = NewTimer(getattr(E_ENEMY_LARGE, spawn_interval), LargeEnemySpawnTimerCallback),
+        .player_invinc = NewTimer(getattr(E_PLAYER, invincibility_time), PlayerInvincTimerCallback),
+        .player_fire_bullet = NewTimer(getattr(E_PLAYER, child_spawns)[E_PLAYER_BULLET], PlayerBulletTimerCallback),
+        .player_fire_shell = NewTimer(getattr(E_PLAYER, child_spawns)[E_PLAYER_SHELL], PlayerShellTimerCallback),
+    };
+}
+
 void GameSleep(float secs) {
     sleep(secs);
 }
@@ -339,6 +347,7 @@ void DrawGameplay(void) {
 
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
+    CheckTimer(&game.timers.player_fire_shell);
     CheckTimer(&game.timers.basic_enemy_spawn);
     CheckTimer(&game.timers.large_enemy_spawn);
 
@@ -428,19 +437,6 @@ void DrawBasicEnemy(Entity *enemy) {
     DrawCircle(enemy->x, enemy->y, enemy->size * 2/3, RED);
 }
 
-void DrawBullet(Entity *bullet) {
-    DrawLineEx(
-        (Vector2){bullet->x - bullet->size * cos(bullet->angle), bullet->y - bullet->size * sin(bullet->angle)},
-        (Vector2){bullet->x + bullet->size * cos(bullet->angle), bullet->y + bullet->size * sin(bullet->angle)},
-        4.0f, DARKGRAY
-    );
-    DrawLineEx(
-        (Vector2){bullet->x - bullet->size * 3/4 * cos(bullet->angle), bullet->y - bullet->size * 3/4 * sin(bullet->angle)},
-        (Vector2){bullet->x + bullet->size * 3/4 * cos(bullet->angle), bullet->y + bullet->size * 3/4 * sin(bullet->angle)},
-        2.0f, BLACK
-    );
-}
-
 void UpdateBasicEnemy(Entity *enemy) {
     MoveEntityToPlayer(enemy);
 }
@@ -454,11 +450,38 @@ void UpdateLargeEnemy(Entity *enemy) {
     MoveEntityToPlayer(enemy);
 }
 
-
-void UpdateBullet(Entity *bullet) {
-    bullet->x += bullet->speed * cos(bullet->angle);
-    bullet->y += bullet->speed * sin(bullet->angle);
+void DrawProjectile(Entity *proj) {
+    switch (proj->type) {
+        case E_PLAYER_BULLET:   return DrawBullet(proj);
+        case E_PLAYER_SHELL:    return DrawShell(proj);
+        default:                return;
+    }
 }
+
+/* for projectiles that travel in straight lines */
+void UpdateProjectile(Entity *proj) {
+    proj->x += proj->speed * cos(proj->angle);
+    proj->y += proj->speed * sin(proj->angle);
+}
+
+void DrawBullet(Entity *bullet) {
+    DrawLineEx(
+        (Vector2){bullet->x - bullet->size * cos(bullet->angle), bullet->y - bullet->size * sin(bullet->angle)},
+        (Vector2){bullet->x + bullet->size * cos(bullet->angle), bullet->y + bullet->size * sin(bullet->angle)},
+        4.0f, DARKGRAY
+    );
+    DrawLineEx(
+        (Vector2){bullet->x - bullet->size * 3/4 * cos(bullet->angle), bullet->y - bullet->size * 3/4 * sin(bullet->angle)},
+        (Vector2){bullet->x + bullet->size * 3/4 * cos(bullet->angle), bullet->y + bullet->size * 3/4 * sin(bullet->angle)},
+        2.0f, BLACK
+    );
+}
+
+void DrawShell(Entity *shell) {
+    DrawCircle(shell->x, shell->y, shell->size, ORANGE);
+    DrawCircle(shell->x, shell->y, shell->size * 5/6, RED);
+}
+
 
 /* game ui elements */
 
@@ -565,8 +588,9 @@ void ManageEntities(bool draw, bool update) {
 
             switch (etype) {
                 
-                /* draw bullets first, then the enemies they hit */
-                case E_PLAYER_BULLET: {
+                /* draw projectiles first, then the enemies they hit */
+                case E_PLAYER_BULLET: 
+                case E_PLAYER_SHELL: {
                     e = &entlist->data[i];
                     if (entity_offscreen(*e)) {
                         if (update) {
@@ -590,14 +614,17 @@ void ManageEntities(bool draw, bool update) {
                                         j--;
                                     }
                                     
-                                    // remove bullet
-                                    vec_remove(entlist, i);
-                                    i--;
+                                    /* shells don't despawn upon hitting an enemy */
+                                    if (etype == E_PLAYER_BULLET) {
+                                        // remove projectile
+                                        vec_remove(entlist, i);
+                                        i--;
+                                    }
 
                                     continue;
                                 }
                             }
-                            UpdateBullet(e);
+                            UpdateProjectile(e);
                         
                             targetlist = &game.entities[E_ENEMY_LARGE];
                             for (int j = 0; j < targetlist->length; j++) {
@@ -610,21 +637,24 @@ void ManageEntities(bool draw, bool update) {
                                         j--;
                                     }
                                     
-                                    // remove bullet
-                                    vec_remove(entlist, i);
-                                    i--;
+                                    /* shells don't despawn upon hitting an enemy */
+                                    if (etype == E_PLAYER_BULLET) {
+                                        // remove projectile
+                                        vec_remove(entlist, i);
+                                        i--;
+                                    }
 
                                     continue;
                                 }
                             }
-                            UpdateBullet(e);
+                            UpdateProjectile(e);
                             
                         }
 
                     }
 
                     if (draw) {
-                        DrawBullet(e);
+                        DrawProjectile(e);
                     }
                 }
 
@@ -755,6 +785,22 @@ Entity PlayerFireBullet(void) {
     };
 }
 
+/* Fires at the mouse cursor and keeps going that way */
+Entity PlayerFireShell(void) {
+    return (Entity) {
+        .type = E_PLAYER_SHELL,
+        .x = game.player.x,
+        .y = game.player.y,
+        .size = getattr(E_PLAYER_SHELL, size),
+        .speed = getattr(E_PLAYER_SHELL, speed),
+        .angle = vec_angle(
+            (Vector2){ game.player.x, game.player.y }, 
+            (Vector2){ GraphicsGetScreenOffset().x + GetMouseX(), GraphicsGetScreenOffset().y + GetMouseY() }
+        ),
+        .contact_damage = getattr(E_PLAYER_SHELL, contact_damage)
+    };
+}
+
 void MoveEntityToPlayer(Entity *e) {
     double dist_to_player;
     Vector2 v;
@@ -826,10 +872,10 @@ bool is_collision(Entity a, Entity b) {
 bool entity_offscreen(Entity e) {
     float w = GetScreenWidth()/2;
     float h = GetScreenHeight()/2;
-    return e.x < game.player.x - (w)
-        || e.x > game.player.x + (w)
-        || e.y < game.player.y - (h)
-        || e.y > game.player.y + (h);
+    return e.x < game.player.x - (game.config.screen_margin[0] * w)
+        || e.x > game.player.x + (game.config.screen_margin[0] * w)
+        || e.y < game.player.y - (game.config.screen_margin[0] * h)
+        || e.y > game.player.y + (game.config.screen_margin[0] * h);
 }
 
 float entity_distance(Entity a, Entity b) {
@@ -840,6 +886,12 @@ float entity_distance(Entity a, Entity b) {
 } 
 
 float entity_angle(Entity a, Entity b) {
+    return atan2(
+        b.y - a.y, b.x - a.x
+    );
+}
+
+float vec_angle(Vector2 a, Vector2 b) {
     return atan2(
         b.y - a.y, b.x - a.x
     );
@@ -947,6 +999,10 @@ void PlayerBulletTimerCallback(void) {
     if (p.type != E_NONE) {
         vec_push(&game.entities[E_PLAYER_BULLET], p);
     }
+}
+
+void PlayerShellTimerCallback(void) {
+    vec_push(&game.entities[E_PLAYER_SHELL], PlayerFireShell());
 }
 
 void DoNothingCallback(void) {
