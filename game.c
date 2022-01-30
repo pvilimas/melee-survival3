@@ -12,7 +12,6 @@ FILE *errorlog;
 
 /*
     TODO:
-    - enemy large has been added, make it work and shit (fix segfaults when starting + restarting)
     - game texture struct, with a path and data
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
@@ -329,7 +328,7 @@ void DrawGameplay(void) {
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.basic_enemy_spawn);
-    //CheckTimer(&game.timers.large_enemy_spawn);
+    CheckTimer(&game.timers.large_enemy_spawn);
     
     //printf("%d\n", 334);
 
