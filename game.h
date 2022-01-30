@@ -131,6 +131,8 @@ void UpdateGameTime(void);
 void InitTexture(GameTexture*);
 void DeinitTexture(GameTexture*);
 
+void GameSleep(float secs);
+
 /* gamestate draw functions */
 
 void DrawTitle(void);

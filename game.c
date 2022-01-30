@@ -11,11 +11,14 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 /*
     TODO:
 
+    - add exploding bullet that fires toward mouse cursor
+    - rework player subspawn type and interval to hold more than 1 ammo cause you'll need to
+
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
     
     - make sure DestroyGame works properly w/ no mem leaks
-    - impl GameSleep with GetTime for cross platform
+    - impl GameSleep with GetTime for cross platform (nvm just alias sleep again, #ifdef WIN32 )
 
     - "you lasted <time>" on the end screen
     - add a couple more projectile types
@@ -158,7 +161,7 @@ void RunGame(void) {
         EndDrawing();
 
         /* FPS control */
-        sleep(frametime - (GetTime() - time));
+        GameSleep(frametime - (GetTime() - time));
     }
 }
 
@@ -317,6 +320,10 @@ void DeinitTexture(GameTexture* t) {
     UnloadTexture(t->data);
     t->data = (Texture2D){};
     t->loaded = false;
+}
+
+void GameSleep(float secs) {
+    sleep(secs);
 }
 
 /* gamestate draw functions */
