@@ -7,12 +7,10 @@ extern ScreenSizeFunc GraphicsGetScreenSize;
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
 // 50/50 chance
 #define cointoss(a, b) ((rand() % 2) ? a : b)
-#define debug fprintf("%s:%d\n", __FILE__, __LINE__)
-FILE *errorlog;
 
 /*
     TODO:
-    - game texture struct, with a path and data
+
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
     
@@ -29,15 +27,12 @@ FILE *errorlog;
     - keymaps?
 */
 
-// used to tile the background
-const char *BG_IMG_PATH = "./assets/background/bg_hextiles.png";
-
 Game game = {
     .config = {
         .window_initialized = false,
         .window_init_dim = (Vector2) { 800, 500 },
         .target_fps = 60,
-        .screen_margin = 1.20f,
+        .screen_margin = { 1.2, 1.5 },
         .entitydata = {
             [E_PLAYER] = {
                 .subspawn_type = E_PLAYER_BULLET,
@@ -79,15 +74,19 @@ Game game = {
             38, 55, 24, 10, "Try again?", RestartBtnCallback
         }
     },
+    .textures = {
+        /* TODO: macro to initialize this from just a path? */
+        .background = {
+            .filepath = "./assets/background/bg_hextiles.png",
+            .data = NULL,
+        },
+    },
 };
 
 
 /* game methods */
 
 void InitGame(void) {
-    //printf("%d\n", 89);
-
-    errorlog = fopen("errorlog", "w");
     
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
     SetExitKey(KEY_ESCAPE);
@@ -102,10 +101,7 @@ void InitGame(void) {
         vec_init(&game.entities[i]);
     }
 
-    Image bg_image = LoadImage(BG_IMG_PATH);
-    game.textures.background = LoadTextureFromImage(bg_image);
-    UnloadImage(bg_image);
-
+    InitTexture(&game.textures.background);
 
     game.state = GS_TITLE;
     game.timers = (GameTimers){
@@ -142,9 +138,7 @@ void RunGame(void) {
                 break;
             }
             case GS_GAMEPLAY: {
-                //printf("%d\n", 146);
                 DrawGameplay();
-                //printf("%d\n", 148);
                 if (game.player.hp <= 0) {
                     SetState(GS_GAMEOVER);
                 }
@@ -204,7 +198,7 @@ void DestroyGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_deinit(&game.entities[i]);
     }
-    UnloadTexture(game.textures.background);
+    DeinitTexture(&game.textures.background);
 }
 
 /* contains initialization logic for each state */
@@ -312,6 +306,19 @@ void UpdateGameTime(void) {
     game.ui.gametime += 1.0 / game.config.target_fps;
 }
 
+void InitTexture(GameTexture* t) {
+    Image temp = LoadImage(t->filepath);
+    t->data = LoadTextureFromImage(temp);
+    UnloadImage(temp);
+    t->loaded = true;
+}
+
+void DeinitTexture(GameTexture* t) {
+    UnloadTexture(t->data);
+    t->data = (Texture2D){};
+    t->loaded = false;
+}
+
 /* gamestate draw functions */
 
 void DrawTitle(void) {
@@ -323,14 +330,10 @@ void DrawTitle(void) {
 void DrawGameplay(void) {
     BeginMode2D(game.camera);
 
-    //printf("%d\n", 327);
-
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.basic_enemy_spawn);
     CheckTimer(&game.timers.large_enemy_spawn);
-    
-    //printf("%d\n", 334);
 
     /* don't mess with this order */
     TileBackground();
@@ -339,7 +342,6 @@ void DrawGameplay(void) {
     HandleInput();
     UpdateCam();
     ManageEntities(true, true);
-    //printf("%d\n", 343);
     
     EndMode2D();
     UpdateGameTime();
@@ -387,12 +389,12 @@ void DrawGameover(void) {
 
 /* please don't mess with this please :) */
 void TileBackground(void) {
-    for (int i = ((game.player.x - GetScreenWidth()/2) / game.textures.background.width) - 1; i < ((game.player.x + GetScreenWidth()/2) / game.textures.background.width) + 1; i++) {
-        for (int j = ((game.player.y - GetScreenHeight()/2) / game.textures.background.height) - 1; j < ((game.player.y + GetScreenHeight()/2) / game.textures.background.height) + 1; j++) {
+    for (int i = ((game.player.x - GetScreenWidth()/2) / game.textures.background.data.width) - 1; i < ((game.player.x + GetScreenWidth()/2) / game.textures.background.data.width) + 1; i++) {
+        for (int j = ((game.player.y - GetScreenHeight()/2) / game.textures.background.data.height) - 1; j < ((game.player.y + GetScreenHeight()/2) / game.textures.background.data.height) + 1; j++) {
             DrawTexture(
-                game.textures.background,
-                i * game.textures.background.width,
-                j * game.textures.background.height,
+                game.textures.background.data,
+                i * game.textures.background.data.width,
+                j * game.textures.background.data.height,
                 (Color){255, 255, 255, 255}
             );
         }
@@ -697,20 +699,18 @@ void ManageEntities(bool draw, bool update) {
 
 Entity RandSpawnEnemy(EntityType type) {
     float x, y;
-    x = randrange(game.player.x - (game.config.screen_margin * GetScreenWidth()/2), game.player.x + (game.config.screen_margin * GetScreenWidth()/2));
-    
-    if (game.player.x - GetScreenWidth()/2 <= x && x <= game.player.x + GetScreenWidth()/2) {
-        
+
+    x = randrange(game.player.x - (game.config.screen_margin[1] * GetScreenWidth()/2), game.player.x + (game.config.screen_margin[1] + GetScreenWidth()/2));
+
+    if (game.player.x - (game.config.screen_margin[0] * GetScreenWidth()/2) <= x && x <= game.player.x + (game.config.screen_margin[0] * GetScreenWidth()/2)) {
         // if x position is on the screen, y pos should be offscreen
         y = cointoss(
-            randrange(game.player.y - (game.config.screen_margin * GetScreenHeight()/2), game.player.y - (GetScreenHeight()/2)),
-            randrange(game.player.y + (GetScreenHeight()/2), game.player.y + (game.config.screen_margin * GetScreenHeight()/2))
+            randrange(game.player.y - (game.config.screen_margin[1] * GetScreenHeight()/2), game.player.y - (game.config.screen_margin[0] * GetScreenHeight()/2)),
+            randrange(game.player.y + (game.config.screen_margin[0] * GetScreenHeight()/2), game.player.y + (game.config.screen_margin[1] * GetScreenHeight()/2))
         );
-
     } else {
-
         // otherwise, y can be anywhere
-        y = randrange(game.player.y - (game.config.screen_margin * GetScreenHeight()/2), game.player.y + (game.config.screen_margin * GetScreenHeight()/2));
+        y = randrange(game.player.y - (game.config.screen_margin[1] * GetScreenHeight()/2), game.player.y + (game.config.screen_margin[1] * GetScreenHeight()/2));
     }
 
     // printf("spawning at (%f, %f)\n", x, y);

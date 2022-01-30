@@ -78,19 +78,25 @@ typedef struct {
 } GameTimers;
 
 typedef struct {
+    bool loaded;
+    const char *filepath;
+    Texture2D data;
+} GameTexture;
+
+typedef struct {
     
     struct {
         Vector2 window_init_dim;
         bool window_initialized;
         int target_fps;
-        /* in % of the screen size, anything outside of here is considered offscreen. enemies spawn here. */
-        float screen_margin;
+        /* in % of the screen size, anything outside of here is considered offscreen. enemies spawn here. [0] is the inner bound, [1] is outer */
+        float screen_margin[2];
         /* +2 for player */
         EntityAttrs entitydata[E_COUNT+2];
     } config;
 
     struct {
-        Texture2D background;
+        GameTexture background;
     } textures;
     
     GameTimers timers;
@@ -115,12 +121,15 @@ void RunGame(void);
 void ReinitGame(void);
 void DestroyGame(void);
 
-void SetState(GameState s);
+void SetState(GameState);
 
 void HandleInput(void);
 void UpdateCam(void);
 
 void UpdateGameTime(void);
+
+void InitTexture(GameTexture*);
+void DeinitTexture(GameTexture*);
 
 /* gamestate draw functions */
 
