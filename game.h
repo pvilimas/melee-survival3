@@ -20,7 +20,7 @@ typedef enum {
 
     /* enemy types */
 
-    E_ENEMY_BASIC,
+    E_ENEMY_BASIC = 0,
     E_ENEMY_LARGE,
 
     /* projectile types */
@@ -45,7 +45,12 @@ typedef struct {
 } Entity;
 
 typedef enum {
-    P_EXPLOSION,
+    P_NONE = -1,
+    P_EXPLOSION = 0,
+    P_ENEMY_FADEOUT_BASIC,
+    P_ENEMY_FADEOUT_LARGE,
+    /* how many there are */
+    P_COUNT,
 } ParticleType;
 
 typedef struct {
@@ -90,6 +95,12 @@ typedef struct {
 } EntityAttrs;
 
 typedef struct {
+    float starting_size;
+    int lifetime;
+    int damage;
+} ParticleAttrs;
+
+typedef struct {
     Timer basic_enemy_spawn,
         large_enemy_spawn,
         player_invinc,
@@ -114,6 +125,7 @@ typedef struct {
         float screen_margin[2];
         /* +2 for player */
         EntityAttrs entitydata[E_COUNT+2];
+        ParticleAttrs particledata[P_COUNT];
     } config;
     struct {
         GameTexture background;
@@ -213,6 +225,7 @@ bool ParticleDone(Particle);
 
 
 void DrawPExplosion(Particle*, bool advance_frame);
+void DrawPEnemyFadeout(Particle*, bool advance_frame);
 
 
 /* general utils */

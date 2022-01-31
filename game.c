@@ -11,8 +11,10 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - ParticleAttrs (for cleanup)
-    - enemy fadeout particle
+    - rework particle/explosion size so it makes sense
+
+    - make damaging particles only contact once (HARD)
+    - or just divide damage by lifetime 
 
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
@@ -73,8 +75,27 @@ Game game = {
                 .speed = 6.0,
                 .size = 8.0,
                 .contact_damage = 200,
-                .explosion_radius = 10.0,
+                /* TODO: make this the default for explosions */
+                .explosion_radius = 3.0,
             }
+        },
+        .particledata = {
+            [P_EXPLOSION] = {
+                .starting_size = 3.0,
+                .lifetime = 10,
+                .damage = 200,
+            },
+            [P_ENEMY_FADEOUT_BASIC] = {
+                .starting_size = 6,
+                .lifetime = 10,
+                .damage = 0,
+            },
+            [P_ENEMY_FADEOUT_LARGE] = {
+                .starting_size = 30,
+                .lifetime = 10,
+                .damage = 0,
+            },
+            
         },
     },
     .ui = {
@@ -83,8 +104,8 @@ Game game = {
             38, 55, 24, 10, "Start", StartBtnCallback,
         },
         .restart_btn = (Button){
-            38, 55, 24, 10, "Try again?", RestartBtnCallback
-        }
+            38, 55, 24, 10, "Try again?", RestartBtnCallback,
+        },
     },
     .textures = {
         /* TODO: macro to initialize this from just a path? */
@@ -631,6 +652,7 @@ void ManageEntities(bool draw, bool update) {
                                         // remove target
                                         vec_remove(targetlist, j);
                                         j--;
+                                        SpawnParticle(P_ENEMY_FADEOUT_BASIC, e->x, e->y);
                                     }
                                     
                                     // remove projectile
@@ -658,6 +680,7 @@ void ManageEntities(bool draw, bool update) {
                                         // remove target
                                         vec_remove(targetlist, j);
                                         j--;
+                                        SpawnParticle(P_ENEMY_FADEOUT_LARGE, e->x, e->y);
                                     }
                                     
                                     // remove projectile
@@ -769,7 +792,21 @@ void ManageParticles(bool draw, bool update) {
     for (int i = 0; i < game.particles.length; i++) {
         p = &game.particles.data[i];
         if (draw) {
-            DrawPExplosion(p, update);
+            switch (p->type) {
+                case P_EXPLOSION: {
+                    DrawPExplosion(p, update);
+                    break;                
+                } 
+                case P_ENEMY_FADEOUT_BASIC: {
+                    DrawPEnemyFadeout(p, update);
+                    break;
+                } 
+                case P_ENEMY_FADEOUT_LARGE: {
+                    DrawPEnemyFadeout(p, update);
+                    break;
+                }
+                default: break;
+            }
             if (show_hitboxes) {
                 DrawParticleHitbox(p);
             }
@@ -786,6 +823,7 @@ void ManageParticles(bool draw, bool update) {
                         // remove target
                         vec_remove(&ev, j);
                         j--;
+                        SpawnParticle(P_ENEMY_FADEOUT_BASIC, target->x, target->y);
                         continue;
                     }
                 }
@@ -801,6 +839,7 @@ void ManageParticles(bool draw, bool update) {
                         // remove target
                         vec_remove(&ev, j);
                         j--;
+                        SpawnParticle(P_ENEMY_FADEOUT_LARGE, target->x, target->y);
                         continue;
                     }
                 }
@@ -917,12 +956,11 @@ Particle NewParticle(ParticleType type, float x, float y) {
         .type = type,
         .x = x,
         .y = y,
-        // TODO: make ParticleAttrs indexed by type
-        .starting_size = 3.0,
-        .size = 3.0,
-        .lifetime = 10,
+        .starting_size = game.config.particledata[type].starting_size,
+        .size = game.config.particledata[type].starting_size,
+        .lifetime = game.config.particledata[type].lifetime,
         .currframe = 1,
-        .damage = 200,
+        .damage = game.config.particledata[type].damage,
     };
 }
 
@@ -936,6 +974,27 @@ void DrawPExplosion(Particle *exp, bool advance_frame) {
     DrawCircle(exp->x, exp->y, exp->size, YELLOW);
     if (advance_frame) {
         exp->currframe++;
+    }
+}
+
+void DrawPEnemyFadeout(Particle *p, bool advance_frame) {
+    int opacity = 255 - 25 * p->currframe;
+    switch (p->type) {
+        case P_ENEMY_FADEOUT_BASIC: {
+            DrawCircle(p->x, p->y, p->size, (Color){ 190, 33, 55, opacity });
+            DrawCircle(p->x, p->y, p->size * 2/3, (Color){ 230, 41, 55, opacity });
+            break;
+        }
+
+        case P_ENEMY_FADEOUT_LARGE: {
+            DrawCircle(p->x, p->y, p->size, (Color){ 0, 0, 0, opacity });
+            DrawCircle(p->x, p->y, p->size * 2/3, (Color){ 190, 33, 55, opacity });
+            break;
+        }
+        default: break;
+    }
+    if (advance_frame) {
+        p->currframe++;
     }
 }
 
