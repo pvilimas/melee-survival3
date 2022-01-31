@@ -314,7 +314,7 @@ void InitTexture(GameTexture* t) {
 
 void DeinitTexture(GameTexture* t) {
     UnloadTexture(t->data);
-    t->data = (Texture2D){};
+    t->data = (Texture2D){0};
     t->loaded = false;
 }
 
@@ -394,6 +394,7 @@ void DrawGameover(void) {
     ClearBackground((Color){170, 170, 170, 255});
     DrawButton(game.ui.restart_btn);
     DrawTextUI("You Died", 50, 45, 50, BLACK);
+    DisplayGameTime();
 
     EndMode2D();
 
