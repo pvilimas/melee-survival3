@@ -11,19 +11,15 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - make shells hit the larger enemies
-
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
     
     - make sure DestroyGame works properly w/ no mem leaks
-    - impl GameSleep with GetTime for cross platform (nvm just alias sleep again, #ifdef WIN32 )
+    - impl GameSleep with GetTime for cross platform (nvm just alias sleep again - #ifdef WIN32)
 
-    - "you lasted <time>" on the end screen
+    - "you lasted <time>" on the end screen - improve it, not just in the corner
     - add a couple more projectile types
 
-    - timed sprite that changes over time as a function of the time it's been on screen, then gets removed at the end
-        - like incineration flames from magic survival
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
     - upgrade tree?
     - keymaps?
@@ -624,7 +620,7 @@ void ManageEntities(bool draw, bool update) {
                                     target->hp -= e->contact_damage;
                                     
                                     /* only shells spawn explosions */
-                                    if (etype == E_PLAYER_SHELL || true) {
+                                    if (etype == E_PLAYER_SHELL) {
                                         SpawnParticle(P_EXPLOSION, e->x, e->y);
                                     }
                                     
@@ -651,7 +647,7 @@ void ManageEntities(bool draw, bool update) {
                                     target->hp -= e->contact_damage;
 
                                     /* only shells spawn explosions */
-                                    if (etype == E_PLAYER_SHELL || true) {
+                                    if (etype == E_PLAYER_SHELL) {
                                         SpawnParticle(P_EXPLOSION, e->x, e->y);
                                     }
 
