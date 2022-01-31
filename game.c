@@ -8,10 +8,17 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 // 50/50 chance
 #define cointoss(a, b) ((rand() % 2) ? a : b)
 
+#define debug fprintf(stderr, "%d\n", __LINE__)
+
 /*
     TODO:
 
     - rework explosion size so it makes sense (use shell.explosion_radius?)
+
+    - fix freeze when shell hits a large enemy
+
+    - sort game.particles (deterministic drawing order)
+
     - kill count or EXP bar
     - player fadeout, then gameover
     - player direction indicator (points @ mouse cursor)
@@ -379,7 +386,7 @@ void DrawGameplay(void) {
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.player_fire_shell);
-    CheckTimer(&game.timers.basic_enemy_spawn);
+    //CheckTimer(&game.timers.basic_enemy_spawn);
     CheckTimer(&game.timers.large_enemy_spawn);
 
     /* don't mess with this order */
@@ -801,10 +808,7 @@ void ManageParticles(bool draw, bool update) {
                     DrawPExplosion(p, update);
                     break;                
                 } 
-                case P_ENEMY_FADEOUT_BASIC: {
-                    DrawPEnemyFadeout(p, update);
-                    break;
-                } 
+                case P_ENEMY_FADEOUT_BASIC:
                 case P_ENEMY_FADEOUT_LARGE: {
                     DrawPEnemyFadeout(p, update);
                     break;
@@ -817,34 +821,37 @@ void ManageParticles(bool draw, bool update) {
         }
 
         if (update) {
-            ev = game.entities[E_ENEMY_BASIC];
-            for (int j = 0; j < ev.length; j++) {
-                target = &ev.data[j];
-                if (is_p_collision(*p, *target)) {
-                    target->hp -= p->damage;
+            /* hardcoding smh */
+            if (p->damage >= 0 && !(p->type == P_ENEMY_FADEOUT_BASIC || p->type == P_ENEMY_FADEOUT_LARGE)) {
+                ev = game.entities[E_ENEMY_BASIC];
+                for (int j = 0; j < ev.length; j++) {
+                    target = &ev.data[j];
+                    if (is_p_collision(*p, *target)) {
+                        target->hp -= p->damage;
 
-                    if (target->hp <= 0) {
-                        SpawnPEnemyFadeout(target);
-                        // remove target
-                        vec_remove(&ev, j);
-                        j--;
-                        continue;
+                        if (target->hp <= 0) {
+                            SpawnPEnemyFadeout(target);
+                            // remove target
+                            vec_remove(&ev, j);
+                            j--;
+                            continue;
+                        }
                     }
                 }
-            }
 
-            ev = game.entities[E_ENEMY_LARGE];
-            for (int j = 0; j < ev.length; j++) {
-                target = &ev.data[j];
-                if (is_p_collision(*p, *target)) {
-                    target->hp -= p->damage;
+                ev = game.entities[E_ENEMY_LARGE];
+                for (int j = 0; j < ev.length; j++) {
+                    target = &ev.data[j];
+                    if (is_p_collision(*p, *target)) {
+                        target->hp -= p->damage;
 
-                    if (target->hp <= 0) {
-                        SpawnPEnemyFadeout(target);
-                        // remove target
-                        vec_remove(&ev, j);
-                        j--;
-                        continue;
+                        if (target->hp <= 0) {
+                            SpawnPEnemyFadeout(target);
+                            // remove target
+                            vec_remove(&ev, j);
+                            j--;
+                            continue;
+                        }
                     }
                 }
             }
