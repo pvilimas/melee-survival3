@@ -386,7 +386,7 @@ void DrawGameplay(void) {
     CheckTimer(&game.timers.player_invinc);
     CheckTimer(&game.timers.player_fire_bullet);
     CheckTimer(&game.timers.player_fire_shell);
-    //CheckTimer(&game.timers.basic_enemy_spawn);
+    CheckTimer(&game.timers.basic_enemy_spawn);
     CheckTimer(&game.timers.large_enemy_spawn);
 
     /* don't mess with this order */
