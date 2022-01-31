@@ -13,11 +13,10 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - rework explosion size so it makes sense (use shell.explosion_radius?)
-
     - arrays of enemy types, projectile types
 
     - sort game.particles (deterministic drawing order)
+    - texture/asset loading failure warnings
 
     - kill count or EXP bar
     - player fadeout, then gameover
@@ -87,7 +86,7 @@ Game game = {
                 .size = 8.0,
                 .contact_damage = 200,
                 /* TODO: make this the default for explosions */
-                .explosion_radius = 3.0,
+                .explosion_radius = 30.0,
             }
         },
         .particledata = {
@@ -121,7 +120,7 @@ Game game = {
     .textures = {
         /* TODO: macro to initialize this from just a path? */
         .background = {
-            .filepath = "./assets/background/bg_hextiles.png",
+            .filepath = "./assets/background/bg_hextiles_large.png",
             .data = NULL,
         },
     },
@@ -242,9 +241,13 @@ void DestroyGame(void) {
 /* contains initialization logic for each state */
 void SetState(GameState new_state) {
     GameState old_state = game.state;
-    
+    /* if starting */
+    if (old_state == GS_TITLE && new_state == GS_GAMEPLAY) {
+        /* don't wanna fire immediately when the game starts */
+        InitGameTimers();
+    }
     /* if starting over */
-    if (old_state == GS_GAMEOVER && new_state == GS_GAMEPLAY) {
+    else if (old_state == GS_GAMEOVER && new_state == GS_GAMEPLAY) {
         ReinitGame();
     }
     /* if player is dead */
@@ -984,12 +987,8 @@ bool ParticleDone(Particle p) {
     return p.currframe >= p.lifetime;
 }
 
-void DrawPExplosion(Particle *exp, bool advance_frame) {
-    exp->size = exp->currframe * exp->starting_size;
-    DrawCircle(exp->x, exp->y, exp->size, YELLOW);
-    if (advance_frame) {
-        exp->currframe++;
-    }
+void SpawnPExplosion(float x, float y) {
+    SpawnParticle(P_EXPLOSION, x, y);
 }
 
 void SpawnPEnemyFadeout(Entity *target) {
@@ -997,6 +996,14 @@ void SpawnPEnemyFadeout(Entity *target) {
         case E_ENEMY_BASIC:     return SpawnParticle(P_ENEMY_FADEOUT_BASIC, target->x, target->y);
         case E_ENEMY_LARGE:     return SpawnParticle(P_ENEMY_FADEOUT_LARGE, target->x, target->y);
         default:                return;
+    }
+}
+
+void DrawPExplosion(Particle *exp, bool advance_frame) {
+    exp->size = exp->currframe * exp->starting_size;
+    DrawCircle(exp->x, exp->y, exp->size, YELLOW);
+    if (advance_frame) {
+        exp->currframe++;
     }
 }
 

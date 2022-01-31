@@ -226,6 +226,7 @@ void SpawnParticle(ParticleType, float x, float y);
 Particle NewParticle(ParticleType, float x, float y);
 bool ParticleDone(Particle);
 
+void SpawnPExplosion(float x, float y);
 void SpawnPEnemyFadeout(Entity*);
 
 void DrawPExplosion(Particle*, bool advance_frame);
