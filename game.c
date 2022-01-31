@@ -15,7 +15,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 
     - rework explosion size so it makes sense (use shell.explosion_radius?)
 
-    - fix freeze when shell hits a large enemy
+    - CheckTimers()
 
     - sort game.particles (deterministic drawing order)
 
