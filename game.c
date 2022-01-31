@@ -13,6 +13,8 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 
     - rework explosion size so it makes sense (use shell.explosion_radius?)
     - kill count or EXP bar
+    - player fadeout, then gameover
+    - player direction indicator (points @ mouse cursor)
 
     - make damaging particles only contact once (HARD)
     - or just divide damage by lifetime 
