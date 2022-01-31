@@ -11,7 +11,8 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - rework particle/explosion size so it makes sense
+    - rework explosion size so it makes sense (use shell.explosion_radius?)
+    - kill count or EXP bar
 
     - make damaging particles only contact once (HARD)
     - or just divide damage by lifetime 
@@ -23,11 +24,12 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
     - impl GameSleep with GetTime for cross platform (nvm just alias sleep again - #ifdef WIN32)
 
     - "you lasted <time>" on the end screen - improve it, not just in the corner
-    - add a couple more projectile types
+    - add a couple more projectile types (something like incineration maybe)
 
     - fix the inputs so A+D won't freeze, but whichever was pressed first takes precedence
     - upgrade tree?
     - keymaps?
+    - enemy status effects (on fire/frozen)?
 */
 
 bool show_hitboxes = false;
@@ -649,10 +651,10 @@ void ManageEntities(bool draw, bool update) {
                                     }
                                     
                                     if (target->hp <= 0) {
+                                        SpawnPEnemyFadeout(target);
                                         // remove target
                                         vec_remove(targetlist, j);
                                         j--;
-                                        SpawnParticle(P_ENEMY_FADEOUT_BASIC, e->x, e->y);
                                     }
                                     
                                     // remove projectile
@@ -677,10 +679,10 @@ void ManageEntities(bool draw, bool update) {
                                     }
 
                                     if (target->hp <= 0) {
+                                        SpawnPEnemyFadeout(target);
                                         // remove target
                                         vec_remove(targetlist, j);
                                         j--;
-                                        SpawnParticle(P_ENEMY_FADEOUT_LARGE, e->x, e->y);
                                     }
                                     
                                     // remove projectile
@@ -820,10 +822,10 @@ void ManageParticles(bool draw, bool update) {
                     target->hp -= p->damage;
 
                     if (target->hp <= 0) {
+                        SpawnPEnemyFadeout(target);
                         // remove target
                         vec_remove(&ev, j);
                         j--;
-                        SpawnParticle(P_ENEMY_FADEOUT_BASIC, target->x, target->y);
                         continue;
                     }
                 }
@@ -836,10 +838,10 @@ void ManageParticles(bool draw, bool update) {
                     target->hp -= p->damage;
 
                     if (target->hp <= 0) {
+                        SpawnPEnemyFadeout(target);
                         // remove target
                         vec_remove(&ev, j);
                         j--;
-                        SpawnParticle(P_ENEMY_FADEOUT_LARGE, target->x, target->y);
                         continue;
                     }
                 }
@@ -967,6 +969,14 @@ Particle NewParticle(ParticleType type, float x, float y) {
 /* does it need to be removed? is the animation done? */
 bool ParticleDone(Particle p) {
     return p.currframe >= p.lifetime;
+}
+
+void SpawnPEnemyFadeout(Entity *target) {
+    switch (target->type) {
+        case E_ENEMY_BASIC:     return SpawnParticle(P_ENEMY_FADEOUT_BASIC, target->x, target->y);
+        case E_ENEMY_LARGE:     return SpawnParticle(P_ENEMY_FADEOUT_LARGE, target->x, target->y);
+        default:                return;
+    }
 }
 
 void DrawPExplosion(Particle *exp, bool advance_frame) {

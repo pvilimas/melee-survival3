@@ -126,6 +126,8 @@ typedef struct {
         /* +2 for player */
         EntityAttrs entitydata[E_COUNT+2];
         ParticleAttrs particledata[P_COUNT];
+        EntityType enemy_types[2];
+        EntityType projectile_types[2];
     } config;
     struct {
         GameTexture background;
@@ -223,6 +225,7 @@ void SpawnParticle(ParticleType, float x, float y);
 Particle NewParticle(ParticleType, float x, float y);
 bool ParticleDone(Particle);
 
+void SpawnPEnemyFadeout(Entity*);
 
 void DrawPExplosion(Particle*, bool advance_frame);
 void DrawPEnemyFadeout(Particle*, bool advance_frame);
