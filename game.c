@@ -11,6 +11,9 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
+    - ParticleAttrs (for cleanup)
+    - enemy fadeout particle
+
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
     
