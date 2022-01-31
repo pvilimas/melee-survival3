@@ -83,7 +83,7 @@ Game game = {
         },
         .particledata = {
             [P_EXPLOSION] = {
-                .starting_size = 3.0,
+                .starting_size = 2.0,
                 .lifetime = 10,
                 .damage = 200,
             },
@@ -971,19 +971,19 @@ bool ParticleDone(Particle p) {
     return p.currframe >= p.lifetime;
 }
 
-void SpawnPEnemyFadeout(Entity *target) {
-    switch (target->type) {
-        case E_ENEMY_BASIC:     return SpawnParticle(P_ENEMY_FADEOUT_BASIC, target->x, target->y);
-        case E_ENEMY_LARGE:     return SpawnParticle(P_ENEMY_FADEOUT_LARGE, target->x, target->y);
-        default:                return;
-    }
-}
-
 void DrawPExplosion(Particle *exp, bool advance_frame) {
     exp->size = exp->currframe * exp->starting_size;
     DrawCircle(exp->x, exp->y, exp->size, YELLOW);
     if (advance_frame) {
         exp->currframe++;
+    }
+}
+
+void SpawnPEnemyFadeout(Entity *target) {
+    switch (target->type) {
+        case E_ENEMY_BASIC:     return SpawnParticle(P_ENEMY_FADEOUT_BASIC, target->x, target->y);
+        case E_ENEMY_LARGE:     return SpawnParticle(P_ENEMY_FADEOUT_LARGE, target->x, target->y);
+        default:                return;
     }
 }
 
