@@ -5,6 +5,7 @@
 #include <stdarg.h>     /* va_list */
 #include <stdbool.h>    /* bool, true, false */
 #include <stdio.h>      /* fprintf, sprintf */
+#include <time.h>       /* time */
 #include <unistd.h>     /* sleep */
 
 #include "raylib.h"
@@ -50,7 +51,10 @@ typedef enum {
 typedef struct {
     ParticleType type;
     float x, y;
+    // this can change
     float size;
+    // this cannot
+    float starting_size;
     // how many frames it's drawn for
     int lifetime;
     // which frame it's on
@@ -161,6 +165,8 @@ void DrawGameover(void);
 
 void TileBackground(void);
 
+void DrawEntityHitbox(Entity*);
+
 void DrawPlayer(bool sprite_flickering);
 void DamagePlayer(int amount);
 
@@ -199,6 +205,7 @@ void MoveEntityToPlayer(Entity*);
 /* particle methods */
 
 Rectangle ParticleHitbox(Particle);
+void DrawParticleHitbox(Particle*);
 
 void SpawnParticle(ParticleType, float x, float y);
 Particle NewParticle(ParticleType, float x, float y);

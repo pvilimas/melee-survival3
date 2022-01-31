@@ -30,6 +30,8 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
     - keymaps?
 */
 
+bool show_hitboxes = false;
+
 Game game = {
     .config = {
         .window_initialized = false,
@@ -99,6 +101,8 @@ Game game = {
 /* game methods */
 
 void InitGame(void) {
+
+    srand(time(NULL));
     
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
     InitWindow(screensize().x, screensize().y, game.config.window_title);
@@ -424,6 +428,10 @@ void TileBackground(void) {
     }
 }
 
+void DrawEntityHitbox(Entity *e) {
+    DrawRectangleLinesEx(EntityHitbox(*e), 1.0, BLACK);
+}
+
 void DrawPlayer(bool sprite_flickering) {
     // sprite flickering
     if (((game.player.invincible && (int)(GetTime() * 10000) % 200 >= 100) || !game.player.invincible) || !sprite_flickering) {
@@ -617,7 +625,7 @@ void ManageEntities(bool draw, bool update) {
                                     target->hp -= e->contact_damage;
                                     
                                     /* only shells spawn explosions */
-                                    if (etype == E_PLAYER_SHELL) {
+                                    if (etype == E_PLAYER_SHELL || true) {
                                         SpawnParticle(P_EXPLOSION, e->x, e->y);
                                     }
                                     
@@ -698,6 +706,9 @@ void ManageEntities(bool draw, bool update) {
 
                     if (draw) {
                         DrawBasicEnemy(e);
+                        if (show_hitboxes) {
+                            DrawEntityHitbox(e);
+                        }
                     }
 
                     break;
@@ -743,28 +754,31 @@ void ManageEntities(bool draw, bool update) {
 }
 
 void ManageParticles(bool draw, bool update) {
-    if (!update && !draw) {
+    if (!draw && !update) {
         return;
     }
 
     EntityVec ev;
-    Entity target;
+    Entity *target;
     Particle *p;
 
     for (int i = 0; i < game.particles.length; i++) {
         p = &game.particles.data[i];
         if (draw) {
             DrawPExplosion(p, update);
+            if (show_hitboxes) {
+                DrawParticleHitbox(p);
+            }
         }
 
         if (update) {
-            ev = game.entities[E_ENEMY_BASIC];
+            ev = game.entities[E_ENEMY_LARGE];
             for (int j = 0; j < ev.length; j++) {
-                target = ev.data[j];
-                if (is_p_collision(*p, target)) {
-                    target.hp -= p->damage;
+                target = &ev.data[j];
+                if (is_p_collision(*p, *target)) {
+                    target->hp -= p->damage;
 
-                    if (target.hp <= 0) {
+                    if (target->hp <= 0) {
                         // remove target
                         vec_remove(&ev, j);
                         j--;
@@ -773,13 +787,13 @@ void ManageParticles(bool draw, bool update) {
                 }
             }
 
-            ev = game.entities[E_ENEMY_LARGE];
+            ev = game.entities[E_ENEMY_BASIC];
             for (int j = 0; j < ev.length; j++) {
-                target = ev.data[j];
-                if (is_p_collision(*p, target)) {
-                    target.hp -= p->damage;
+                target = &ev.data[j];
+                if (is_p_collision(*p, *target)) {
+                    target->hp -= p->damage;
 
-                    if (target.hp <= 0) {
+                    if (target->hp <= 0) {
                         // remove target
                         vec_remove(&ev, j);
                         j--;
@@ -883,9 +897,11 @@ void MoveEntityToPlayer(Entity *e) {
 /* particle methods */
 
 Rectangle ParticleHitbox(Particle p) {
-    switch (p.type) {
-        default: return (Rectangle){ p.x-p.size/2, p.y-p.size/2, p.size, p.size };
-    }
+    return (Rectangle){ p.x-p.size/2, p.y-p.size/2, p.size, p.size };
+}
+
+void DrawParticleHitbox(Particle *p) {
+    DrawRectangleLinesEx(ParticleHitbox(*p), 1.0, BLACK);
 }
 
 void SpawnParticle(ParticleType type, float x, float y) {
@@ -898,9 +914,11 @@ Particle NewParticle(ParticleType type, float x, float y) {
         .x = x,
         .y = y,
         // TODO: make ParticleAttrs indexed by type
+        .starting_size = 3.0,
         .size = 3.0,
         .lifetime = 10,
-        .currframe = 0,
+        .currframe = 1,
+        .damage = 200,
     };
 }
 
@@ -910,7 +928,7 @@ bool ParticleDone(Particle p) {
 }
 
 void DrawPExplosion(Particle *exp, bool advance_frame) {
-    exp->size = exp->currframe * 2;
+    exp->size = exp->currframe * exp->starting_size;
     DrawCircle(exp->x, exp->y, exp->size, YELLOW);
     if (advance_frame) {
         exp->currframe++;
