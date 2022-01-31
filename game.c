@@ -11,8 +11,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - make shell explosions do area damage
-    - make them hit the larger enemies
+    - make shells hit the larger enemies
 
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
@@ -44,7 +43,7 @@ Game game = {
             [E_PLAYER] = {
                 .child_spawns = {
                     [E_PLAYER_BULLET] = 1.0f,
-                    [E_PLAYER_SHELL] = 5.0f,
+                    [E_PLAYER_SHELL] = 4.0f,
                 },
                 .max_hp = 100,
                 .invincibility_time = 1.0,
@@ -71,7 +70,7 @@ Game game = {
                 .contact_damage = 100,
             },
             [E_PLAYER_SHELL] = {
-                .spawn_interval = 5.0,
+                .spawn_interval = 4.0,
                 .speed = 6.0,
                 .size = 8.0,
                 .contact_damage = 200,
@@ -650,6 +649,12 @@ void ManageEntities(bool draw, bool update) {
                                 target = &targetlist->data[j];
                                 if (is_collision(*e, *target)) {
                                     target->hp -= e->contact_damage;
+
+                                    /* only shells spawn explosions */
+                                    if (etype == E_PLAYER_SHELL || true) {
+                                        SpawnParticle(P_EXPLOSION, e->x, e->y);
+                                    }
+
                                     if (target->hp <= 0) {
                                         // remove target
                                         vec_remove(targetlist, j);
@@ -772,7 +777,7 @@ void ManageParticles(bool draw, bool update) {
         }
 
         if (update) {
-            ev = game.entities[E_ENEMY_LARGE];
+            ev = game.entities[E_ENEMY_BASIC];
             for (int j = 0; j < ev.length; j++) {
                 target = &ev.data[j];
                 if (is_p_collision(*p, *target)) {
@@ -787,7 +792,7 @@ void ManageParticles(bool draw, bool update) {
                 }
             }
 
-            ev = game.entities[E_ENEMY_BASIC];
+            ev = game.entities[E_ENEMY_LARGE];
             for (int j = 0; j < ev.length; j++) {
                 target = &ev.data[j];
                 if (is_p_collision(*p, *target)) {
