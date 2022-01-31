@@ -157,6 +157,7 @@ void DestroyGame(void);
 void SetState(GameState);
 
 void HandleInput(void);
+void CheckTimers(void);
 void UpdateCam(void);
 
 void UpdateGameTime(void);

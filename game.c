@@ -15,7 +15,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 
     - rework explosion size so it makes sense (use shell.explosion_radius?)
 
-    - CheckTimers()
+    - arrays of enemy types, projectile types
 
     - sort game.particles (deterministic drawing order)
 
@@ -336,6 +336,14 @@ void HandleInput(void) {
     }
 }
 
+void CheckTimers(void) {
+    CheckTimer(&game.timers.player_invinc);
+    CheckTimer(&game.timers.player_fire_bullet);
+    CheckTimer(&game.timers.player_fire_shell);
+    CheckTimer(&game.timers.basic_enemy_spawn);
+    CheckTimer(&game.timers.large_enemy_spawn);
+}
+
 void UpdateCam(void) {
     game.camera.offset = (Vector2) { GetScreenWidth()/2, GetScreenHeight()/2 };
     game.camera.target = (Vector2){ game.player.x, game.player.y };
@@ -383,11 +391,7 @@ void DrawTitle(void) {
 void DrawGameplay(void) {
     BeginMode2D(game.camera);
 
-    CheckTimer(&game.timers.player_invinc);
-    CheckTimer(&game.timers.player_fire_bullet);
-    CheckTimer(&game.timers.player_fire_shell);
-    CheckTimer(&game.timers.basic_enemy_spawn);
-    CheckTimer(&game.timers.large_enemy_spawn);
+    CheckTimers();
 
     /* don't mess with this order */
     TileBackground();
