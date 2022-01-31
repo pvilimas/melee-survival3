@@ -44,6 +44,21 @@ typedef struct {
 } Entity;
 
 typedef enum {
+    P_EXPLOSION,
+} ParticleType;
+
+typedef struct {
+    ParticleType type;
+    float x, y;
+    float size;
+    // how many frames it's drawn for
+    int lifetime;
+    // which frame it's on
+    int currframe;
+    int damage;
+} Particle;
+
+typedef enum {
     GS_TITLE,
     GS_GAMEPLAY,
     GS_PAUSED,
@@ -51,6 +66,8 @@ typedef enum {
 } GameState;
 
 typedef vec_t(Entity) EntityVec;
+typedef vec_t(Particle) ParticleVec;
+
 typedef struct {
     // in seconds
     float spawn_interval;
@@ -83,10 +100,10 @@ typedef struct {
 } GameTexture;
 
 typedef struct {
-    
     struct {
         Vector2 window_init_dim;
         bool window_initialized;
+        const char *window_title;
         int target_fps;
         float animation_frametime;
         /* in % of the screen size, anything outside of here is considered offscreen. enemies spawn here. [0] is the inner bound, [1] is outer */
@@ -94,24 +111,22 @@ typedef struct {
         /* +2 for player */
         EntityAttrs entitydata[E_COUNT+2];
     } config;
-
     struct {
         GameTexture background;
     } textures;
-    
     GameTimers timers;
-
     struct {
         Button start_btn, restart_btn;
         float gametime;
     } ui;
-
     GameState state;
     Camera2D camera;
     Entity player;
 
     /* indexed by type */
     EntityVec entities[E_COUNT];
+    /* not indexed */
+    ParticleVec particles;
 } Game;
 
 /* game methods */
@@ -173,12 +188,25 @@ void DisplayGameTime(void);
 Rectangle EntityHitbox(Entity);
 
 void ManageEntities(bool draw, bool update);
+void ManageParticles(bool draw, bool update);
 
 Entity RandSpawnEnemy(EntityType);
 Entity PlayerFireBullet(void);
 Entity PlayerFireShell(void);
 
 void MoveEntityToPlayer(Entity*);
+
+/* particle methods */
+
+Rectangle ParticleHitbox(Particle);
+
+void SpawnParticle(ParticleType, float x, float y);
+Particle NewParticle(ParticleType, float x, float y);
+bool ParticleDone(Particle);
+
+
+void DrawPExplosion(Particle*, bool advance_frame);
+
 
 /* general utils */
 
@@ -192,6 +220,7 @@ float randchoice(size_t count, float *probs, ...);
 float distance(Vector2, Vector2);
 
 bool is_collision(Entity, Entity);
+bool is_p_collision(Particle, Entity);
 bool entity_offscreen(Entity);
 
 float entity_distance(Entity, Entity);

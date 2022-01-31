@@ -11,7 +11,8 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - make shells explode
+    - make shell explosions do area damage
+    - make them hit the larger enemies
 
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
@@ -33,6 +34,7 @@ Game game = {
     .config = {
         .window_initialized = false,
         .window_init_dim = (Vector2) { 800, 500 },
+        .window_title = "Melee Survival",
         .target_fps = 60,
         .animation_frametime = 1.0 / 60,
         .screen_margin = { 1.2, 1.5 },
@@ -99,7 +101,7 @@ Game game = {
 void InitGame(void) {
     
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
-    InitWindow(screensize().x, screensize().y, "Melee Survival");
+    InitWindow(screensize().x, screensize().y, game.config.window_title);
     SetTargetFPS(game.config.target_fps);
     game.config.window_initialized = true;
     
@@ -109,6 +111,7 @@ void InitGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_init(&game.entities[i]);
     }
+    vec_init(&game.particles);
 
     InitTexture(&game.textures.background);
 
@@ -172,6 +175,7 @@ void ReinitGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_clear(&game.entities[i]);
     }
+    vec_clear(&game.particles);
 
     game.state = GS_TITLE;
     InitGameTimers();
@@ -197,6 +201,7 @@ void DestroyGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_deinit(&game.entities[i]);
     }
+    vec_deinit(&game.particles);
     DeinitTexture(&game.textures.background);
 }
 
@@ -240,6 +245,7 @@ void HandleInput(void) {
         }
     }
 
+    /* keep this here i forget why it's needed */
     if (game.state != GS_GAMEPLAY) {
         return;
     }
@@ -356,6 +362,7 @@ void DrawGameplay(void) {
     HandleInput();
     UpdateCam();
     ManageEntities(true, true);
+    ManageParticles(true, true);
     
     EndMode2D();
     UpdateGameTime();
@@ -371,6 +378,7 @@ void DrawPaused(void) {
     HandleInput();
     UpdateCam();
     ManageEntities(true, false);
+    ManageParticles(true, false);
 
     Vector2 offset = GraphicsGetScreenOffset();
     Vector2 size = GraphicsGetScreenSize();
@@ -607,18 +615,22 @@ void ManageEntities(bool draw, bool update) {
                                 target = &targetlist->data[j];
                                 if (is_collision(*e, *target)) {
                                     target->hp -= e->contact_damage;
+                                    
+                                    /* only shells spawn explosions */
+                                    if (etype == E_PLAYER_SHELL) {
+                                        SpawnParticle(P_EXPLOSION, e->x, e->y);
+                                    }
+                                    
                                     if (target->hp <= 0) {
                                         // remove target
                                         vec_remove(targetlist, j);
                                         j--;
                                     }
                                     
-                                    /* shells don't despawn upon hitting an enemy */
-                                    if (etype == E_PLAYER_BULLET) {
-                                        // remove projectile
-                                        vec_remove(entlist, i);
-                                        i--;
-                                    }
+                                    // remove projectile
+                                    vec_remove(entlist, i);
+                                    i--;
+
 
                                     continue;
                                 }
@@ -636,12 +648,9 @@ void ManageEntities(bool draw, bool update) {
                                         j--;
                                     }
                                     
-                                    /* shells don't despawn upon hitting an enemy */
-                                    if (etype == E_PLAYER_BULLET) {
-                                        // remove projectile
-                                        vec_remove(entlist, i);
-                                        i--;
-                                    }
+                                    // remove projectile
+                                    vec_remove(entlist, i);
+                                    i--;
 
                                     continue;
                                 }
@@ -733,6 +742,61 @@ void ManageEntities(bool draw, bool update) {
     }
 }
 
+void ManageParticles(bool draw, bool update) {
+    if (!update && !draw) {
+        return;
+    }
+
+    EntityVec ev;
+    Entity target;
+    Particle *p;
+
+    for (int i = 0; i < game.particles.length; i++) {
+        p = &game.particles.data[i];
+        if (draw) {
+            DrawPExplosion(p, update);
+        }
+
+        if (update) {
+            ev = game.entities[E_ENEMY_BASIC];
+            for (int j = 0; j < ev.length; j++) {
+                target = ev.data[j];
+                if (is_p_collision(*p, target)) {
+                    target.hp -= p->damage;
+
+                    if (target.hp <= 0) {
+                        // remove target
+                        vec_remove(&ev, j);
+                        j--;
+                        continue;
+                    }
+                }
+            }
+
+            ev = game.entities[E_ENEMY_LARGE];
+            for (int j = 0; j < ev.length; j++) {
+                target = ev.data[j];
+                if (is_p_collision(*p, target)) {
+                    target.hp -= p->damage;
+
+                    if (target.hp <= 0) {
+                        // remove target
+                        vec_remove(&ev, j);
+                        j--;
+                        continue;
+                    }
+                }
+            }
+
+            if (ParticleDone(*p)) {
+                vec_remove(&game.particles, i);
+                i--;
+                continue;
+            }
+        }
+    }
+}
+
 Entity RandSpawnEnemy(EntityType type) {
     float x, y;
 
@@ -816,6 +880,43 @@ void MoveEntityToPlayer(Entity *e) {
     e->y += (v.y * e->speed);
 }
 
+/* particle methods */
+
+Rectangle ParticleHitbox(Particle p) {
+    switch (p.type) {
+        default: return (Rectangle){ p.x-p.size/2, p.y-p.size/2, p.size, p.size };
+    }
+}
+
+void SpawnParticle(ParticleType type, float x, float y) {
+    vec_push(&game.particles, NewParticle(type, x, y));
+}
+
+Particle NewParticle(ParticleType type, float x, float y) {
+    return (Particle) {
+        .type = type,
+        .x = x,
+        .y = y,
+        // TODO: make ParticleAttrs indexed by type
+        .size = 3.0,
+        .lifetime = 10,
+        .currframe = 0,
+    };
+}
+
+/* does it need to be removed? is the animation done? */
+bool ParticleDone(Particle p) {
+    return p.currframe >= p.lifetime;
+}
+
+void DrawPExplosion(Particle *exp, bool advance_frame) {
+    exp->size = exp->currframe * 2;
+    DrawCircle(exp->x, exp->y, exp->size, YELLOW);
+    if (advance_frame) {
+        exp->currframe++;
+    }
+}
+
 /* general utils */
 
 Vector2 screensize(void) {
@@ -840,6 +941,7 @@ float randfloat(float min, float max) {
     return min + scale * ( max - min );      /* [min, max] */
 }
 
+// bad idea (is this even used?)
 float randchoice(size_t count, float *probs, ...) {
     va_list opts;
     float r = randrange(0, count-1);
@@ -861,11 +963,10 @@ float distance(Vector2 a, Vector2 b) {
 
 bool is_collision(Entity a, Entity b) {
     return CheckCollisionRecs(EntityHitbox(a), EntityHitbox(b));
-    return entity_distance(a, b) < 3.0f;
-    return distance(
-        (Vector2){EntityHitbox(a).x, EntityHitbox(a).y},
-        (Vector2){EntityHitbox(b).x, EntityHitbox(b).y}
-    ) < 3.0f;
+}
+
+bool is_p_collision(Particle p, Entity e) {
+    return CheckCollisionRecs(ParticleHitbox(p), EntityHitbox(e));
 }
 
 bool entity_offscreen(Entity e) {
@@ -903,26 +1004,6 @@ Entity *player_closest_enemy(void) {
     EntityType closest_type = -1;
 
     EntityVec *entvec;
-/*
-    
-    entvec = &game.entities[E_ENEMY_BASIC];
-    if (entvec->data == NULL){
-        return NULL;
-    }
-    
-    for (int i = 0; i < entvec->length; i++) {
-
-        if ((temp = entity_distance(game.player, entvec->data[i])) < smallest_dist) {
-
-            smallest_dist = temp;
-            closest_index = i;
-            continue;
-        }
-    }
-
-    return &game.entities[E_ENEMY_BASIC].data[closest_index];
-    */
-
 
     static EntityType enemytypes[] = { E_ENEMY_BASIC, E_ENEMY_LARGE };
 
