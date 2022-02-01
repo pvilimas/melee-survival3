@@ -7,7 +7,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
 // 50/50 chance
 #define cointoss(a, b) ((rand() % 2) ? a : b)
-#define len(x) (sizeof(x) / sizeof(*x))
+#define len(x) ((int)(sizeof(x) / sizeof(*x)))
 
 #define debug fprintf(stderr, "%d\n", __LINE__)
 
@@ -23,7 +23,9 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
     - player direction indicator (points @ mouse cursor)
 
     - make damaging particles only contact once (HARD)
-    - or just divide damage by lifetime 
+    - or just divide damage by lifetime lol
+
+    - add heart containers
 
     - add 2 more types of enemies (4 in total) and spawn all of them randomly
     - then make it scale over time
@@ -393,6 +395,7 @@ void InitGameTimers(void) {
     };
 }
 
+/* unused */
 void GameSleep(float secs) {
     sleep(secs);
 }
@@ -435,15 +438,7 @@ void DrawPaused(void) {
     ManageEntities(true, false);
     ManageParticles(true, false);
 
-    Vector2 offset = GraphicsGetScreenOffset();
-    Vector2 size = GraphicsGetScreenSize();
-
-    float x = offset.x;
-    float y = offset.y;
-    float w = size.x;
-    float h = size.y;
-
-    DrawRectangle(x, y, w, h, (Color){180, 180, 180, 180});
+    DrawRectangleV(GraphicsGetScreenOffset(), GraphicsGetScreenSize(), (Color){180, 180, 180, 180});
     DrawTextUI("PAUSED", 50, 50, 50, BLACK);
 
     EndMode2D();
@@ -664,7 +659,6 @@ void ManageEntities(bool draw, bool update) {
                             i--;
                         }
                     } else {
-
                         
                         if (update) {
 
@@ -679,7 +673,7 @@ void ManageEntities(bool draw, bool update) {
 
                                         /* only shells spawn explosions */
                                         if (etype == E_PLAYER_SHELL) {
-                                            SpawnParticle(P_EXPLOSION, e->x, e->y);
+                                            SpawnPExplosion(e->x, e->y);
                                         }
 
                                         if (target->hp <= 0) {
