@@ -16,7 +16,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 
     - fix the freeze
 
-    - texture/asset loading failure warnings
+    - texture/asset loading failure warnings/deliberate crashing
 
     - kill count or EXP bar
     - player fadeout, then gameover
