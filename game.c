@@ -14,7 +14,8 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - sort game.particles (deterministic drawing order)
+    - fix the freeze
+
     - texture/asset loading failure warnings
 
     - kill count or EXP bar
@@ -151,7 +152,9 @@ void InitGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_init(&game.entities[i]);
     }
-    vec_init(&game.particles);
+    for (int i = 0; i < P_COUNT; i++) {
+        vec_init(&game.particles[i]);
+    }
 
     InitTexture(&game.textures.background);
 
@@ -215,7 +218,9 @@ void ReinitGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_clear(&game.entities[i]);
     }
-    vec_clear(&game.particles);
+    for (int i = 0; i < P_COUNT; i++) {
+        vec_clear(&game.particles[i]);
+    }
 
     game.state = GS_TITLE;
     InitGameTimers();
@@ -241,7 +246,9 @@ void DestroyGame(void) {
     for (int i = 0; i < E_COUNT; i++) {
         vec_deinit(&game.entities[i]);
     }
-    vec_deinit(&game.particles);
+    for (int i = 0; i < P_COUNT; i++) {
+        vec_deinit(&game.particles[i]);
+    }
     DeinitTexture(&game.textures.background);
 }
 
@@ -787,55 +794,58 @@ void ManageParticles(bool draw, bool update) {
     Entity *target;
     Particle *p;
 
-    for (int i = 0; i < game.particles.length; i++) {
-        p = &game.particles.data[i];
-        if (draw) {
-            switch (p->type) {
-                case P_EXPLOSION: {
-                    DrawPExplosion(p, update);
-                    break;                
-                } 
-                case P_ENEMY_FADEOUT_BASIC:
-                case P_ENEMY_FADEOUT_LARGE: {
-                    DrawPEnemyFadeout(p, update);
-                    break;
+    for (int ptype = 0; ptype < P_COUNT; ptype++) {
+        for (int i = 0; i < game.particles[ptype].length; i++) {
+            p = &game.particles[ptype].data[i];
+            if (draw) {
+                switch (p->type) {
+                    case P_EXPLOSION: {
+                        DrawPExplosion(p, update);
+                        break;                
+                    } 
+                    case P_ENEMY_FADEOUT_BASIC:
+                    case P_ENEMY_FADEOUT_LARGE: {
+                        DrawPEnemyFadeout(p, update);
+                        break;
+                    }
+                    default: break;
                 }
-                default: break;
+                if (show_hitboxes) {
+                    DrawParticleHitbox(p);
+                }
             }
-            if (show_hitboxes) {
-                DrawParticleHitbox(p);
-            }
-        }
 
-        if (update) {
-            /* hardcoding smh */
-            if (p->damage >= 0 && !(p->type == P_ENEMY_FADEOUT_BASIC || p->type == P_ENEMY_FADEOUT_LARGE)) {
-                for (int etype_index = 0; etype_index < len(game.config.enemy_types); i++) {
-                    ev = game.entities[game.config.enemy_types[etype_index]];
-                    for (int j = 0; j < ev.length; j++) {
-                        target = &ev.data[j];
-                        if (is_p_collision(*p, *target)) {
-                            target->hp -= p->damage;
+            if (update) {
+                /* hardcoding smh */
+                if (p->damage >= 0 && !(p->type == P_ENEMY_FADEOUT_BASIC || p->type == P_ENEMY_FADEOUT_LARGE)) {
+                    for (int etype_index = 0; etype_index < len(game.config.enemy_types); i++) {
+                        ev = game.entities[game.config.enemy_types[etype_index]];
+                        for (int j = 0; j < ev.length; j++) {
+                            target = &ev.data[j];
+                            if (is_p_collision(*p, *target)) {
+                                target->hp -= p->damage;
 
-                            if (target->hp <= 0) {
-                                SpawnPEnemyFadeout(target);
-                                // remove target
-                                vec_remove(&ev, j);
-                                j--;
-                                continue;
+                                if (target->hp <= 0) {
+                                    SpawnPEnemyFadeout(target);
+                                    // remove target
+                                    vec_remove(&ev, j);
+                                    j--;
+                                    continue;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (ParticleDone(*p)) {
-                vec_remove(&game.particles, i);
-                i--;
-                continue;
+                if (ParticleDone(*p)) {
+                    vec_remove(&game.particles[ptype], i);
+                    i--;
+                    continue;
+                }
             }
         }
     }
+
 }
 
 Entity RandSpawnEnemy(EntityType type) {
@@ -932,7 +942,7 @@ void DrawParticleHitbox(Particle *p) {
 }
 
 void SpawnParticle(ParticleType type, float x, float y) {
-    vec_push(&game.particles, NewParticle(type, x, y));
+    vec_push(&game.particles[type], NewParticle(type, x, y));
 }
 
 Particle NewParticle(ParticleType type, float x, float y) {

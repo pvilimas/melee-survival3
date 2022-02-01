@@ -46,9 +46,9 @@ typedef struct {
 
 typedef enum {
     P_NONE = -1,
-    P_EXPLOSION = 0,
-    P_ENEMY_FADEOUT_BASIC,
+    P_ENEMY_FADEOUT_BASIC = 0,
     P_ENEMY_FADEOUT_LARGE,
+    P_EXPLOSION,
     /* how many there are */
     P_COUNT,
 } ParticleType;
@@ -143,8 +143,8 @@ typedef struct {
 
     /* indexed by type */
     EntityVec entities[E_COUNT];
-    /* not indexed */
-    ParticleVec particles;
+    /* now indexed as well */
+    ParticleVec particles[P_COUNT];
 } Game;
 
 /* game methods */
