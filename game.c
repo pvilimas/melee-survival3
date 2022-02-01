@@ -7,13 +7,12 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
 // 50/50 chance
 #define cointoss(a, b) ((rand() % 2) ? a : b)
+#define len(x) (sizeof(x) / sizeof(*x))
 
 #define debug fprintf(stderr, "%d\n", __LINE__)
 
 /*
     TODO:
-
-    - arrays of enemy types, projectile types
 
     - sort game.particles (deterministic drawing order)
     - texture/asset loading failure warnings
@@ -50,6 +49,14 @@ Game game = {
         .target_fps = 60,
         .animation_frametime = 1.0 / 60,
         .screen_margin = { 1.2, 1.5 },
+        .enemy_types = {
+            E_ENEMY_BASIC,
+            E_ENEMY_LARGE,
+        },
+        .projectile_types = {
+            E_PLAYER_BULLET,
+            E_PLAYER_SHELL,
+        },
         .entitydata = {
             [E_PLAYER] = {
                 .child_spawns = {
@@ -655,63 +662,36 @@ void ManageEntities(bool draw, bool update) {
                         if (update) {
 
                             // check for any collisions with enemies
-                            targetlist = &game.entities[E_ENEMY_BASIC];
-                            for (int j = 0; j < targetlist->length; j++) {
-                                target = &targetlist->data[j];
-                                if (is_collision(*e, *target)) {
-                                    target->hp -= e->contact_damage;
-                                    
-                                    /* only shells spawn explosions */
-                                    if (etype == E_PLAYER_SHELL) {
-                                        SpawnParticle(P_EXPLOSION, e->x, e->y);
-                                    }
-                                    
-                                    if (target->hp <= 0) {
-                                        SpawnPEnemyFadeout(target);
-                                        // remove target
-                                        vec_remove(targetlist, j);
-                                        j--;
-                                    }
-                                    
-                                    // remove projectile
-                                    vec_remove(entlist, i);
-                                    i--;
 
+                            for (int etype_index = 0; etype_index < len(game.config.enemy_types); etype_index++) {
+                                targetlist = &game.entities[game.config.enemy_types[etype_index]];
+                                for (int j = 0; j < targetlist->length; j++) {
+                                    target = &targetlist->data[j];
+                                    if (is_collision(*e, *target)) {
+                                        target->hp -= e->contact_damage;
 
-                                    continue;
+                                        /* only shells spawn explosions */
+                                        if (etype == E_PLAYER_SHELL) {
+                                            SpawnParticle(P_EXPLOSION, e->x, e->y);
+                                        }
+
+                                        if (target->hp <= 0) {
+                                            SpawnPEnemyFadeout(target);
+                                            // remove target
+                                            vec_remove(targetlist, j);
+                                            j--;
+                                        }
+
+                                        // remove projectile
+                                        vec_remove(entlist, i);
+                                        i--;
+
+                                        continue;
+                                    }
                                 }
-                            }
-                            UpdateProjectile(e);
-                        
-                            targetlist = &game.entities[E_ENEMY_LARGE];
-                            for (int j = 0; j < targetlist->length; j++) {
-                                target = &targetlist->data[j];
-                                if (is_collision(*e, *target)) {
-                                    target->hp -= e->contact_damage;
-
-                                    /* only shells spawn explosions */
-                                    if (etype == E_PLAYER_SHELL) {
-                                        SpawnParticle(P_EXPLOSION, e->x, e->y);
-                                    }
-
-                                    if (target->hp <= 0) {
-                                        SpawnPEnemyFadeout(target);
-                                        // remove target
-                                        vec_remove(targetlist, j);
-                                        j--;
-                                    }
-                                    
-                                    // remove projectile
-                                    vec_remove(entlist, i);
-                                    i--;
-
-                                    continue;
-                                }
-                            }
-                            UpdateProjectile(e);
-                            
+                                UpdateProjectile(e);
+                            }                            
                         }
-
                     }
 
                     if (draw) {
@@ -830,34 +810,20 @@ void ManageParticles(bool draw, bool update) {
         if (update) {
             /* hardcoding smh */
             if (p->damage >= 0 && !(p->type == P_ENEMY_FADEOUT_BASIC || p->type == P_ENEMY_FADEOUT_LARGE)) {
-                ev = game.entities[E_ENEMY_BASIC];
-                for (int j = 0; j < ev.length; j++) {
-                    target = &ev.data[j];
-                    if (is_p_collision(*p, *target)) {
-                        target->hp -= p->damage;
+                for (int etype_index = 0; etype_index < len(game.config.enemy_types); i++) {
+                    ev = game.entities[game.config.enemy_types[etype_index]];
+                    for (int j = 0; j < ev.length; j++) {
+                        target = &ev.data[j];
+                        if (is_p_collision(*p, *target)) {
+                            target->hp -= p->damage;
 
-                        if (target->hp <= 0) {
-                            SpawnPEnemyFadeout(target);
-                            // remove target
-                            vec_remove(&ev, j);
-                            j--;
-                            continue;
-                        }
-                    }
-                }
-
-                ev = game.entities[E_ENEMY_LARGE];
-                for (int j = 0; j < ev.length; j++) {
-                    target = &ev.data[j];
-                    if (is_p_collision(*p, *target)) {
-                        target->hp -= p->damage;
-
-                        if (target->hp <= 0) {
-                            SpawnPEnemyFadeout(target);
-                            // remove target
-                            vec_remove(&ev, j);
-                            j--;
-                            continue;
+                            if (target->hp <= 0) {
+                                SpawnPEnemyFadeout(target);
+                                // remove target
+                                vec_remove(&ev, j);
+                                j--;
+                                continue;
+                            }
                         }
                     }
                 }
@@ -1108,29 +1074,29 @@ float vec_angle(Vector2 a, Vector2 b) {
     );
 }
 
+/* any type of enemy */
 Entity *player_closest_enemy(void) {
 
     float smallest_dist = 10000.0, temp;
     int closest_index = -1;
     EntityType closest_type = -1;
-
     EntityVec *entvec;
 
-    static EntityType enemytypes[] = { E_ENEMY_BASIC, E_ENEMY_LARGE };
-
-    for (int etype = 0; etype < 2; etype++) {
-        entvec = &game.entities[enemytypes[etype]];
+    EntityType etype;
+    for (int i = 0; i < len(game.config.enemy_types); i++) {
+        etype = game.config.enemy_types[i];
+        entvec = &game.entities[etype];
         if (entvec->data == NULL){
             continue;
         }
         
-        for (int i = 0; i < entvec->length; i++) {
+        for (int j = 0; j < entvec->length; j++) {
 
-            if ((temp = entity_distance(game.player, entvec->data[i])) < smallest_dist) {
+            if ((temp = entity_distance(game.player, entvec->data[j])) < smallest_dist) {
 
                 smallest_dist = temp;
-                closest_index = i;
-                closest_type = etype;
+                closest_index = j;
+                closest_type = i;
                 continue;
             }
         }
@@ -1140,6 +1106,7 @@ Entity *player_closest_enemy(void) {
     
 }
 
+/* a specified type */
 Entity *player_closest_entity(EntityType type) {
     float dist = 10000.0, temp;
     int closest;
