@@ -14,8 +14,6 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - texture/asset loading failure warnings/deliberate crashing
-
     - kill count or EXP bar
     - player fadeout, then gameover
     - player direction indicator (points @ mouse cursor)
@@ -387,6 +385,10 @@ void UpdateGameTime(void) {
 
 void InitTexture(GameTexture* t) {
     Image temp = LoadImage(t->filepath);
+    if (temp.data == NULL) {
+        fprintf(stderr, "File not found: %s\n", t->filepath);
+        exit(1);
+    }
     t->data = LoadTextureFromImage(temp);
     UnloadImage(temp);
     t->loaded = true;
