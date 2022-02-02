@@ -14,8 +14,6 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - fix the freeze
-
     - texture/asset loading failure warnings/deliberate crashing
 
     - kill count or EXP bar
@@ -40,10 +38,12 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
     - upgrade tree?
     - keymaps?
     - enemy status effects (on fire/frozen)?
+
+    - quadtrees? https://gamedevelopment.tutsplus.com/tutorials/quick-tip-use-quadtrees-to-detect-likely-collisions-in-2d-space--gamedev-374
+    - this is a must if comparisons_per_frame goes to shit
 */
 
 bool show_hitboxes = false;
-int comparisons_per_frame = 0;
 
 Game game = {
     .config = {
@@ -193,7 +193,6 @@ void InitGame(void) {
 void RunGame(void) {
     
     while (!WindowShouldClose()) {
-        comparisons_per_frame = 0;
         /* FPS control */
         static const double frametime = 1.0 / 60.0;
         double time = GetTime();
@@ -225,7 +224,6 @@ void RunGame(void) {
 
         /* FPS control */
         GameSleep(frametime - (GetTime() - time));
-        //printf("%d\n", comparisons_per_frame);
     }
 }
 
@@ -687,7 +685,6 @@ void DrawEntities(bool update) {
                                 targetlist = &game.entities[game.config.enemy_types[etype_index]];
                                 for (int j = 0; j < targetlist->length; j++) {
                                     target = &targetlist->data[j];
-                                    comparisons_per_frame++;
                                     if (is_collision(*e, *target)) {
                                         target->hp -= e->contact_damage;
 
@@ -739,7 +736,6 @@ void DrawEntities(bool update) {
                             if (i == j)
                                 continue;
 
-                            comparisons_per_frame++;
                             /* optimization - enemy merging - keep it like this */
                             if (entity_distance(*e, *target) < 0.5) {
                                 // remove other
@@ -747,7 +743,6 @@ void DrawEntities(bool update) {
                                 j--;
                             }
 
-                            comparisons_per_frame++;
                             if (is_collision(game.player, *e)) {
                                 DamagePlayer(e->contact_damage);
                             }
@@ -797,7 +792,6 @@ void DrawParticles(bool update) {
                             }
 
                             target = &ev.data[j];
-                            comparisons_per_frame++;
                             if (is_p_collision(*p, *target)) {
                                 target->hp -= p->damage;
 
