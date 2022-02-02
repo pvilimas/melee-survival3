@@ -14,7 +14,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 /*
     TODO:
 
-    - fix ui element scaling
+    - fix ui element scaling (of everything)
 
     - player fadeout, then gameover
 
@@ -49,7 +49,7 @@ bool show_hitboxes = false;
 Game game = {
     .config = {
         .window_initialized = false,
-        .window_init_dim = (Vector2) { 800, 500 },
+        .window_init_dim = (Vector2) { 800, 450 },
         .window_title = "Melee Survival",
         .target_fps = 60,
         .animation_frametime = 1.0 / 60,
@@ -87,7 +87,6 @@ Game game = {
                 .size = 30,
                 .max_hp = 500,
                 .contact_damage = 40,
-                .contact_damage = 10,
                 .draw = DrawLargeEnemy,
                 .update = UpdateLargeEnemy,
             },
@@ -422,7 +421,7 @@ void GameSleep(float secs) {
 
 void DrawTitle(void) {
     ClearBackground((Color){170, 170, 170, 255});
-    DrawTextUI(game.config.window_title, 50, 45, 50, BLACK);
+    DrawTextUI(game.config.window_title, 50, 45, 40, BLACK);
     DrawButton(game.ui.start_btn);
 }
 
@@ -457,7 +456,7 @@ void DrawPaused(void) {
     DrawParticles(false);
 
     DrawRectangleV(GraphicsGetScreenOffset(), GraphicsGetScreenSize(), (Color){180, 180, 180, 180});
-    DrawTextUI("PAUSED", 50, 50, 50, BLACK);
+    DrawTextUI("PAUSED", 50, 50, 40, BLACK);
 
     EndMode2D();
     
@@ -469,7 +468,7 @@ void DrawGameover(void) {
 
     ClearBackground((Color){170, 170, 170, 255});
     DrawButton(game.ui.restart_btn);
-    DrawTextUI("You Died", 50, 45, 50, BLACK);
+    DrawTextUI("You Died", 50, 45, 40, BLACK);
     DisplayGameTime();
 
     EndMode2D();
@@ -589,6 +588,12 @@ void DrawGameUI(void) {
 }
 
 void DisplayPlayerHP(void) {
+
+    /* don't draw if player is at full health */
+    if (game.player.hp == game.player.max_hp) {
+        return;
+    }
+
     static Color gradient[41] = {
         (Color){ 219, 11, 11, 255 },
         (Color){ 218, 20, 12, 255 },

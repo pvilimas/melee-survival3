@@ -195,6 +195,7 @@ void DrawEntityHitbox(Entity*);
 
 void DrawPlayer(bool sprite_flickering);
 void DamagePlayer(int amount);
+void HealPlayer(int amount);
 
 /* generics */
 

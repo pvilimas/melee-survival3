@@ -1,6 +1,7 @@
 #ifndef _GRAPHICS_H_
 #define _GRAPHICS_H_
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +21,10 @@ typedef struct {
     BtnCallback on_click;
 } Button;
 
-void DrawTextUI(const char *text, float x_percent, float y_percent, float fontSize, Color color);
+/* text methods */
+
+float GetScaledFontSize(float scale);
+void DrawTextUI(const char *text, float x_percent, float y_percent, float font_scale, Color color);
 
 /* button methods */
 

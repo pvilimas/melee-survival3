@@ -43,12 +43,22 @@ void DrawButton(Button b) {
     }
 }
 
+/* text methods */
+
+float GetScaledFontSize(float scale) {
+    return (
+        sqrtf(powf(GraphicsGetScreenSize().x, 2.0f) + powf(GraphicsGetScreenSize().y, 2.0f)) / 
+        sqrtf(pow(800, 2) + pow(450, 2))
+    ) * scale;
+}
 
 /* centered */
-void DrawTextUI(const char *text, float x_percent, float y_percent, float fontSize, Color color) {
+void DrawTextUI(const char *text, float x_percent, float y_percent, float font_scale, Color color) {
     
     Vector2 offset = GraphicsGetScreenOffset();
     Vector2 size = GraphicsGetScreenSize();
+
+    float fontSize = GetScaledFontSize(font_scale);
 
     float x = offset.x + ((x_percent / 100.0) * size.x);
     float y = offset.y + ((y_percent / 100.0) * size.y);
