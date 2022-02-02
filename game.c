@@ -7,15 +7,18 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 #define getattr(etype, attr) (game.config.entitydata[etype].attr)
 // 50/50 chance
 #define cointoss(a, b) ((rand() % 2) ? a : b)
-#define len(x) ((int)(sizeof(x) / sizeof(*x)))
+#define len(arr) ((int)(sizeof(arr) / sizeof(*arr)))
 
 #define debug fprintf(stderr, "%d [%lf]\n", __LINE__, GetTime())
 
 /*
     TODO:
 
-    - kill count or EXP bar
+    - fix ui element scaling
+
     - player fadeout, then gameover
+
+    - kill count or EXP bar
     - player direction indicator (points @ mouse cursor)
 
     - make damaging particles only contact once (HARD)
@@ -504,7 +507,16 @@ void DrawPlayer(bool sprite_flickering) {
 void DamagePlayer(int amount) {
     if (!game.player.invincible) {
         game.player.hp -= amount;
-        game.player.invincible = true;
+        if (game.player.hp >= 0) {
+            game.player.invincible = true;
+        }
+    }
+}
+
+void HealPlayer(int amount) {
+    game.player.hp += amount;
+    if (game.player.hp >= game.player.max_hp) {
+        game.player.hp = game.player.max_hp;
     }
 }
 
