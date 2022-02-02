@@ -9,7 +9,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 #define cointoss(a, b) ((rand() % 2) ? a : b)
 #define len(x) ((int)(sizeof(x) / sizeof(*x)))
 
-#define debug fprintf(stderr, "%d\n", __LINE__)
+#define debug fprintf(stderr, "%d [%lf]\n", __LINE__, GetTime())
 
 /*
     TODO:
@@ -43,6 +43,7 @@ extern ScreenOffsetFunc GraphicsGetScreenOffset;
 */
 
 bool show_hitboxes = false;
+int comparisons_per_frame = 0;
 
 Game game = {
     .config = {
@@ -76,6 +77,8 @@ Game game = {
                 .size = 6,
                 .max_hp = 100,
                 .contact_damage = 10,
+                .draw = DrawBasicEnemy,
+                .update = UpdateBasicEnemy,
             },
             [E_ENEMY_LARGE] = {
                 .spawn_interval = 5,
@@ -83,12 +86,17 @@ Game game = {
                 .size = 30,
                 .max_hp = 500,
                 .contact_damage = 40,
+                .contact_damage = 10,
+                .draw = DrawLargeEnemy,
+                .update = UpdateLargeEnemy,
             },
             [E_PLAYER_BULLET] = {
                 .spawn_interval = 1.0,
                 .speed = 4.0,
                 .size = 4.0,
                 .contact_damage = 100,
+                .draw = DrawBullet,
+                .update = UpdateProjectile,
             },
             [E_PLAYER_SHELL] = {
                 .spawn_interval = 4.0,
@@ -97,6 +105,8 @@ Game game = {
                 .contact_damage = 200,
                 /* TODO: make this the default for explosions */
                 .explosion_radius = 30.0,
+                .draw = DrawShell,
+                .update = UpdateProjectile,
             }
         },
         .particledata = {
@@ -104,16 +114,19 @@ Game game = {
                 .starting_size = 2.0,
                 .lifetime = 10,
                 .damage = 200,
+                .draw = DrawPExplosion,
             },
             [P_ENEMY_FADEOUT_BASIC] = {
                 .starting_size = 6,
-                .lifetime = 10,
+                .lifetime = 8,
                 .damage = 0,
+                .draw = DrawPEnemyFadeout,
             },
             [P_ENEMY_FADEOUT_LARGE] = {
                 .starting_size = 30,
-                .lifetime = 10,
+                .lifetime = 8,
                 .damage = 0,
+                .draw = DrawPEnemyFadeout,
             },
             
         },
@@ -180,6 +193,7 @@ void InitGame(void) {
 void RunGame(void) {
     
     while (!WindowShouldClose()) {
+        comparisons_per_frame = 0;
         /* FPS control */
         static const double frametime = 1.0 / 60.0;
         double time = GetTime();
@@ -211,6 +225,7 @@ void RunGame(void) {
 
         /* FPS control */
         GameSleep(frametime - (GetTime() - time));
+        //printf("%d\n", comparisons_per_frame);
     }
 }
 
@@ -404,7 +419,7 @@ void GameSleep(float secs) {
 
 void DrawTitle(void) {
     ClearBackground((Color){170, 170, 170, 255});
-    DrawTextUI("Melee Survival", 50, 45, 50, BLACK);
+    DrawTextUI(game.config.window_title, 50, 45, 50, BLACK);
     DrawButton(game.ui.start_btn);
 }
 
@@ -419,8 +434,8 @@ void DrawGameplay(void) {
     DrawPlayer(true);
     HandleInput();
     UpdateCam();
-    ManageEntities(true, true);
-    ManageParticles(true, true);
+    DrawEntities(true);
+    DrawParticles(true);
     
     EndMode2D();
     UpdateGameTime();
@@ -435,8 +450,8 @@ void DrawPaused(void) {
     DrawPlayer(false);
     HandleInput();
     UpdateCam();
-    ManageEntities(true, false);
-    ManageParticles(true, false);
+    DrawEntities(false);
+    DrawParticles(false);
 
     DrawRectangleV(GraphicsGetScreenOffset(), GraphicsGetScreenSize(), (Color){180, 180, 180, 180});
     DrawTextUI("PAUSED", 50, 50, 50, BLACK);
@@ -491,6 +506,16 @@ void DamagePlayer(int amount) {
         game.player.hp -= amount;
         game.player.invincible = true;
     }
+}
+
+/* generics */
+
+void DrawEntity(Entity *e) {
+    game.config.entitydata[e->type].draw(e);
+}
+
+void UpdateEntity(Entity *e) {
+    game.config.entitydata[e->type].update(e);
 }
 
 void DrawBasicEnemy(Entity *enemy) {
@@ -628,12 +653,7 @@ Rectangle EntityHitbox(Entity e) {
     }
 }
 
-void ManageEntities(bool draw, bool update) {
-
-    if (!draw && !update) {
-        return;
-    }
-
+void DrawEntities(bool update) {
     EntityVec *entlist, *targetlist;
     Entity *e, *target;
 
@@ -663,15 +683,15 @@ void ManageEntities(bool draw, bool update) {
                         if (update) {
 
                             // check for any collisions with enemies
-
                             for (int etype_index = 0; etype_index < len(game.config.enemy_types); etype_index++) {
                                 targetlist = &game.entities[game.config.enemy_types[etype_index]];
                                 for (int j = 0; j < targetlist->length; j++) {
                                     target = &targetlist->data[j];
+                                    comparisons_per_frame++;
                                     if (is_collision(*e, *target)) {
                                         target->hp -= e->contact_damage;
 
-                                        /* only shells spawn explosions */
+                                        /* only shells spawn explosions, not bullets */
                                         if (etype == E_PLAYER_SHELL) {
                                             SpawnPExplosion(e->x, e->y);
                                         }
@@ -690,69 +710,36 @@ void ManageEntities(bool draw, bool update) {
                                         continue;
                                     }
                                 }
-                                UpdateProjectile(e);
+                                UpdateEntity(e);
                             }                            
                         }
                     }
-
-                    if (draw) {
-                        DrawProjectile(e);
+                    DrawEntity(e);
+                    if (show_hitboxes) {
+                        DrawEntityHitbox(e);
                     }
+                    
+                    break;
                 }
 
                 break;
                 
-                case E_ENEMY_BASIC: {
-                    
-                    if (update) {
-                        // if two enemies have the "same" xy pos, remove one
-                        targetlist = &game.entities[E_ENEMY_BASIC];
-                        if (vec_empty(targetlist)) {
-                            break;
-                        }
-                        for (int j = 0; j < targetlist->length; j++) {
-                            target = &targetlist->data[j];
-                            
-                            if (i == j)
-                                continue;
-
-                            /* optimization - enemy merging - keep it like this */
-                            if (entity_distance(*e, *target) < 0.5) {
-                                // remove other
-                                vec_remove(targetlist, j);
-                                j--;
-                            }
-
-                            if (is_collision(game.player, *e)) {
-                                DamagePlayer(e->contact_damage);
-                            }
-                        }
-                        UpdateBasicEnemy(e);
-                    }
-
-                    if (draw) {
-                        DrawBasicEnemy(e);
-                        if (show_hitboxes) {
-                            DrawEntityHitbox(e);
-                        }
-                    }
-
-                    break;
-                }
+                case E_ENEMY_BASIC:
                 case E_ENEMY_LARGE: {
                     
                     if (update) {
-                        // if two enemies have the "same" xy pos, remove one
-                        targetlist = &game.entities[E_ENEMY_LARGE];
+                        // if two enemies (of the same type) have the "same" xy pos, remove one
+                        targetlist = &game.entities[e->type];
                         if (vec_empty(targetlist)) {
                             break;
                         }
                         for (int j = 0; j < targetlist->length; j++) {
                             target = &targetlist->data[j];
-                            
+
                             if (i == j)
                                 continue;
 
+                            comparisons_per_frame++;
                             /* optimization - enemy merging - keep it like this */
                             if (entity_distance(*e, *target) < 0.5) {
                                 // remove other
@@ -760,15 +747,17 @@ void ManageEntities(bool draw, bool update) {
                                 j--;
                             }
 
+                            comparisons_per_frame++;
                             if (is_collision(game.player, *e)) {
                                 DamagePlayer(e->contact_damage);
                             }
                         }
-                        UpdateLargeEnemy(e);
+                        UpdateEntity(e);
                     }
 
-                    if (draw) {
-                        DrawLargeEnemy(e);
+                    DrawEntity(e);
+                    if (show_hitboxes) {
+                        DrawEntityHitbox(e);
                     }
 
                     break;
@@ -779,43 +768,36 @@ void ManageEntities(bool draw, bool update) {
     }
 }
 
-void ManageParticles(bool draw, bool update) {
-    if (!draw && !update) {
-        return;
-    }
-
+void DrawParticles(bool update) {
     EntityVec ev;
     Entity *target;
     Particle *p;
-
     for (int ptype = 0; ptype < P_COUNT; ptype++) {
+        if (vec_empty(&game.particles[ptype])) {
+            continue;
+        }
         for (int i = 0; i < game.particles[ptype].length; i++) {
             p = &game.particles[ptype].data[i];
-            if (draw) {
-                switch (p->type) {
-                    case P_EXPLOSION: {
-                        DrawPExplosion(p, update);
-                        break;                
-                    } 
-                    case P_ENEMY_FADEOUT_BASIC:
-                    case P_ENEMY_FADEOUT_LARGE: {
-                        DrawPEnemyFadeout(p, update);
-                        break;
-                    }
-                    default: break;
-                }
-                if (show_hitboxes) {
-                    DrawParticleHitbox(p);
-                }
+            DrawParticle(p, update);
+            if (show_hitboxes) {
+                DrawParticleHitbox(p);
             }
 
             if (update) {
-                /* hardcoding smh */
-                if (p->damage >= 0 && !(p->type == P_ENEMY_FADEOUT_BASIC || p->type == P_ENEMY_FADEOUT_LARGE)) {
-                    for (int etype_index = 0; etype_index < len(game.config.enemy_types); i++) {
+                if (p->damage >= 0) {
+                    for (int etype_index = 0; etype_index < len(game.config.enemy_types); etype_index++) {
                         ev = game.entities[game.config.enemy_types[etype_index]];
+                        if (vec_empty(&ev)) {
+                            continue;
+                        }
+
                         for (int j = 0; j < ev.length; j++) {
+                            if (i == j) {
+                                continue;
+                            }
+
                             target = &ev.data[j];
+                            comparisons_per_frame++;
                             if (is_p_collision(*p, *target)) {
                                 target->hp -= p->damage;
 
@@ -869,6 +851,7 @@ Entity RandSpawnEnemy(EntityType type) {
         .max_hp = getattr(type, max_hp),
         .hp = getattr(type, max_hp),
         .contact_damage = getattr(type, contact_damage),
+        .spawned_particle = false,
     };
 }
 
@@ -889,7 +872,8 @@ Entity PlayerFireBullet(void) {
         .size = getattr(E_PLAYER_BULLET, size),
         .speed = getattr(E_PLAYER_BULLET, speed),
         .angle = entity_angle(game.player, *p),
-        .contact_damage = getattr(E_PLAYER_BULLET, contact_damage)
+        .contact_damage = getattr(E_PLAYER_BULLET, contact_damage),
+        .spawned_particle = false,
     };
 }
 
@@ -905,7 +889,8 @@ Entity PlayerFireShell(void) {
             (Vector2){ game.player.x, game.player.y }, 
             (Vector2){ GraphicsGetScreenOffset().x + GetMouseX(), GraphicsGetScreenOffset().y + GetMouseY() }
         ),
-        .contact_damage = getattr(E_PLAYER_SHELL, contact_damage)
+        .contact_damage = getattr(E_PLAYER_SHELL, contact_damage),
+        .spawned_particle = false,
     };
 }
 
@@ -955,6 +940,12 @@ Particle NewParticle(ParticleType type, float x, float y) {
 /* does it need to be removed? is the animation done? */
 bool ParticleDone(Particle p) {
     return p.currframe >= p.lifetime;
+}
+
+/* generics */
+
+void DrawParticle(Particle *p, bool advance_frame) {
+    game.config.particledata[p->type].draw(p, advance_frame);
 }
 
 void SpawnPExplosion(float x, float y) {

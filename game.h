@@ -42,13 +42,15 @@ typedef struct {
     float speed, angle;
     int max_hp, hp, contact_damage;
     bool invincible;
+    // for explosions
+    bool spawned_particle;
 } Entity;
 
 typedef enum {
     P_NONE = -1,
-    P_ENEMY_FADEOUT_BASIC = 0,
+    P_EXPLOSION = 0,
+    P_ENEMY_FADEOUT_BASIC,
     P_ENEMY_FADEOUT_LARGE,
-    P_EXPLOSION,
     /* how many there are */
     P_COUNT,
 } ParticleType;
@@ -77,6 +79,12 @@ typedef enum {
 typedef vec_t(Entity) EntityVec;
 typedef vec_t(Particle) ParticleVec;
 
+typedef void (*EDrawFunc)(Entity*);
+typedef void (*EUpdateFunc)(Entity*);
+
+// TODO: spawn and despawn?
+typedef void (*PDrawFunc)(Particle*, bool advance_frame);
+
 typedef struct {
     // in seconds
     float spawn_interval;
@@ -92,12 +100,15 @@ typedef struct {
     float explosion_radius;
     int max_hp;
     int contact_damage;
+    EDrawFunc draw;
+    EUpdateFunc update;
 } EntityAttrs;
 
 typedef struct {
     float starting_size;
     int lifetime;
     int damage;
+    PDrawFunc draw;
 } ParticleAttrs;
 
 typedef struct {
@@ -185,6 +196,11 @@ void DrawEntityHitbox(Entity*);
 void DrawPlayer(bool sprite_flickering);
 void DamagePlayer(int amount);
 
+/* generics */
+
+void DrawEntity(Entity*);
+void UpdateEntity(Entity*);
+
 void DrawBasicEnemy(Entity*);
 void UpdateBasicEnemy(Entity*);
 
@@ -208,8 +224,8 @@ void DisplayGameTime(void);
 
 Rectangle EntityHitbox(Entity);
 
-void ManageEntities(bool draw, bool update);
-void ManageParticles(bool draw, bool update);
+void DrawEntities(bool update);
+void DrawParticles(bool update);
 
 Entity RandSpawnEnemy(EntityType);
 Entity PlayerFireBullet(void);
@@ -225,6 +241,10 @@ void DrawParticleHitbox(Particle*);
 void SpawnParticle(ParticleType, float x, float y);
 Particle NewParticle(ParticleType, float x, float y);
 bool ParticleDone(Particle);
+
+/* generics */
+
+void DrawParticle(Particle*, bool advance_frame);
 
 void SpawnPExplosion(float x, float y);
 void SpawnPEnemyFadeout(Entity*);

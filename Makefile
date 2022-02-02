@@ -20,3 +20,4 @@ run: main
 clean:
 	rm -f build/main
 	rm -rf build/*.dSYM
+	clear
