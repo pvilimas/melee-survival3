@@ -156,7 +156,7 @@ void InitGame(void) {
 
     srand(time(NULL));
     
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT /*| FLAG_WINDOW_RESIZABLE*/);
     InitWindow(screensize().x, screensize().y, game.config.window_title);
     SetTargetFPS(game.config.target_fps);
     game.config.window_initialized = true;
